@@ -561,7 +561,7 @@ def render_overview_tab(df, info, indicators, cfg):
         ("HIGH (D)",   f"INR {df['High'].iloc[-1]:,.2f}", None,          ""),
         ("LOW (D)",    f"INR {df['Low'].iloc[-1]:,.2f}",  None,          ""),
         ("VOLUME",     f"{vol/1e6:.2f}M",    f"avg {avg_vol/1e6:.2f}M", ""),
-        ("52W RANGE",  f"INR {df['Low'].tail(252).min():,.0f} – INR {df['High'].tail(252).max():,.0f}", None, ""),
+        ("52W RANGE",  f"{df['Low'].tail(252).min():,.0f} – {df['High'].tail(252).max():,.0f}", None, ""),
     ]
     cols = st.columns(6)
     for col, (lbl, val, delta, dcls) in zip(cols, metrics):
