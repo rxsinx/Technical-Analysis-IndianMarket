@@ -430,7 +430,7 @@ def build_main_chart(df: pd.DataFrame, indicators: dict, cfg: dict) -> go.Figure
         for level in indicators["sr_levels"][:6]:
             fig.add_hline(
                 y=level["price"], row=1, col=1,
-                line=dict(color="#ffaa0066" if level["type"] == "R" else "#00ff6a66", width=1, dash="dot"),
+                line=dict(color="rgba(255,170,0,0.4)" if level["type"] == "R" else "rgba(0,255,106,0.4)", width=1, dash="dot"),
                 annotation_text=f"{level['type']} {level['price']:.2f}",
                 annotation_font_size=9, annotation_font_color="#ffaa00" if level["type"] == "R" else "#00ff6a",
             )
@@ -440,7 +440,7 @@ def build_main_chart(df: pd.DataFrame, indicators: dict, cfg: dict) -> go.Figure
         for z in indicators["zones"][:4]:
             fig.add_hrect(
                 y0=z["low"], y1=z["high"], row=1, col=1,
-                fillcolor="#00ff6a11" if z["type"] == "demand" else "#ff335511",
+                fillcolor="rgba(0,255,106,0.07)" if z["type"] == "demand" else "rgba(255,51,85,0.07)",
                 line_width=0,
                 annotation_text=z["type"].upper(),
                 annotation_font_size=8,
@@ -448,7 +448,7 @@ def build_main_chart(df: pd.DataFrame, indicators: dict, cfg: dict) -> go.Figure
             )
 
     # Volume
-    colors_vol = ["#00ff6a55" if c >= o else "#ff335555"
+    colors_vol = ["rgba(0,255,106,0.33)" if c >= o else "rgba(255,51,85,0.33)"
                   for c, o in zip(df["Close"], df["Open"])]
     fig.add_trace(go.Bar(
         x=df.index, y=df["Volume"],
@@ -470,8 +470,8 @@ def build_main_chart(df: pd.DataFrame, indicators: dict, cfg: dict) -> go.Figure
             mode="lines", name="RSI",
             line=dict(color="#00ffcc", width=1.5),
         ), row=3, col=1)
-        fig.add_hline(y=70, row=3, col=1, line=dict(color="#ff335544", width=1, dash="dot"))
-        fig.add_hline(y=30, row=3, col=1, line=dict(color="#00ff6a44", width=1, dash="dot"))
+        fig.add_hline(y=70, row=3, col=1, line=dict(color="rgba(255,51,85,0.27)", width=1, dash="dot"))
+        fig.add_hline(y=30, row=3, col=1, line=dict(color="rgba(0,255,106,0.27)", width=1, dash="dot"))
         fig.add_hline(y=50, row=3, col=1, line=dict(color="#3a6648", width=1, dash="dot"))
 
     # Layout
@@ -796,8 +796,8 @@ def _plot_rr(df, tp):
             annotation_font_size=9, annotation_font_color=color,
         )
     # Zones
-    fig.add_hrect(y0=sl, y1=entry, fillcolor="#ff335511", line_width=0)
-    fig.add_hrect(y0=entry, y1=t2, fillcolor="#00ff6a11", line_width=0)
+    fig.add_hrect(y0=sl, y1=entry, fillcolor="rgba(255,51,85,0.07)", line_width=0)
+    fig.add_hrect(y0=entry, y1=t2, fillcolor="rgba(0,255,106,0.07)", line_width=0)
 
     fig.update_layout(
         paper_bgcolor="#020c06", plot_bgcolor="#040f08",
