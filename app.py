@@ -336,7 +336,7 @@ def render_sidebar():
 
     # Symbol input
     st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;'>SYMBOL</div>", unsafe_allow_html=True)
-    symbol = st.sidebar.text_input("", value="RELIANCE.NS", key="symbol_input", label_visibility="collapsed").upper().strip()
+    symbol = st.sidebar.text_input("", value="", key="symbol_input", label_visibility="collapsed").upper().strip()
 
     # Timeframe
     st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>PRIMARY TIMEFRAME</div>", unsafe_allow_html=True)
