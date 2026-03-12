@@ -394,8 +394,8 @@ def build_main_chart(df: pd.DataFrame, indicators: dict, cfg: dict) -> go.Figure
     fig.add_trace(go.Candlestick(
         x=df.index, open=df["Open"], high=df["High"],
         low=df["Low"], close=df["Close"],
-        increasing=dict(line=dict(color="#00ff6a", width=1), fillcolor="#00ff6a22"),
-        decreasing=dict(line=dict(color="#ff3355", width=1), fillcolor="#ff335522"),
+        increasing=dict(line=dict(color="#00ff6a", width=1), fillcolor="rgba(0,255,106,0.15)"),
+        decreasing=dict(line=dict(color="#ff3355", width=1), fillcolor="rgba(255,51,85,0.15)"),
         name="Price",
     ), row=1, col=1)
 
@@ -780,8 +780,8 @@ def _plot_rr(df, tp):
     fig.add_trace(go.Candlestick(
         x=dff.index, open=dff["Open"], high=dff["High"],
         low=dff["Low"], close=dff["Close"],
-        increasing=dict(line=dict(color="#00ff6a", width=1), fillcolor="#00ff6a22"),
-        decreasing=dict(line=dict(color="#ff3355", width=1), fillcolor="#ff335522"),
+        increasing=dict(line=dict(color="#00ff6a", width=1), fillcolor="rgba(0,255,106,0.15)"),
+        decreasing=dict(line=dict(color="#ff3355", width=1), fillcolor="rgba(255,51,85,0.15)"),
         name="Price",
     ))
     for level, color, label in [
