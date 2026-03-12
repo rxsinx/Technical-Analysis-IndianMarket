@@ -117,7 +117,7 @@ html, body, [class*="css"] {
 }
 .metric-value {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 12px;
+    font-size: 10px;
     color: #00ff6a;
     letter-spacing: 0.5px;
     margin-bottom: 4px;
@@ -127,7 +127,7 @@ html, body, [class*="css"] {
 }
 .metric-delta {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
+    font-size: 10px;
     color: #ffaa00;
     letter-spacing: 1px;
 }
@@ -202,7 +202,7 @@ td { color: #a0ffc0 !important; border-bottom: 1px solid #0a1a0e !important; }
     padding: 3px 6px;
     border-left: 2px solid #004422;
     margin: 3px 0;
-    font-size: 12px;
+    font-size: 10px;
 }
 .ta-item-bullet { color: #007733; }
 
