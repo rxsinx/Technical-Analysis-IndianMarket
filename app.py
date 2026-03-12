@@ -282,7 +282,7 @@ def render_header():
     with col1:
         st.markdown("""
         <div class="module-header">TA // TERMINAL</div>
-        <div class="module-sub">TECHNICAL ANALYSIS SYSTEM v2.4 &nbsp;|&nbsp; 16 MODULES LOADED</div>
+        <div class="module-sub">TECHNICAL ANALYSIS SYSTEM v2.4 &nbsp;|&nbsp; INDIAN EQUITY &nbsp;|&nbsp; 16 MODULES LOADED</div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown(f"""
@@ -312,7 +312,7 @@ def render_sidebar():
 
     # Symbol input
     st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;'>SYMBOL</div>", unsafe_allow_html=True)
-    symbol = st.sidebar.text_input("", value="AAPL", key="symbol_input", label_visibility="collapsed").upper().strip()
+    symbol = st.sidebar.text_input("", value="RELIANCE.NS", key="symbol_input", label_visibility="collapsed").upper().strip()
 
     # Timeframe
     st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>PRIMARY TIMEFRAME</div>", unsafe_allow_html=True)
@@ -327,8 +327,8 @@ def render_sidebar():
     risk_pct = st.sidebar.slider("", 0.5, 5.0, 1.0, 0.5, key="risk_pct", label_visibility="collapsed")
 
     # Capital
-    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>CAPITAL ($)</div>", unsafe_allow_html=True)
-    capital = st.sidebar.number_input("", value=10000, step=1000, key="capital", label_visibility="collapsed")
+    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>CAPITAL (₹)</div>", unsafe_allow_html=True)
+    capital = st.sidebar.number_input("", value=100000, step=10000, key="capital", label_visibility="collapsed")
 
     # Indicators
     st.sidebar.markdown("<hr style='border:none;border-top:1px solid #0d3318;margin:16px 0;'>", unsafe_allow_html=True)
@@ -394,9 +394,9 @@ def build_main_chart(df: pd.DataFrame, indicators: dict, cfg: dict) -> go.Figure
     fig.add_trace(go.Candlestick(
         x=df.index, open=df["Open"], high=df["High"],
         low=df["Low"], close=df["Close"],
-        increasing_line_color="#00ff6a", decreasing_line_color="#ff3355",
-        increasing_fillcolor="#00ff6a22", decreasing_fillcolor="#ff335522",
-        name="Price", line_width=1,
+        increasing=dict(line=dict(color="#00ff6a", width=1), fillcolor="#00ff6a22"),
+        decreasing=dict(line=dict(color="#ff3355", width=1), fillcolor="#ff335522"),
+        name="Price",
     ), row=1, col=1)
 
     # EMAs
@@ -533,12 +533,12 @@ def render_overview_tab(df, info, indicators, cfg):
 
     cols = st.columns(6)
     metrics = [
-        ("LAST PRICE",  f"${last:.2f}",  f"{chg:+.2f}"),
+        ("LAST PRICE",  f"₹{last:.2f}",  f"{chg:+.2f}"),
         ("CHANGE",      f"{chg_pct:+.2f}%", None),
-        ("HIGH (D)",    f"${df['High'].iloc[-1]:.2f}", None),
-        ("LOW (D)",     f"${df['Low'].iloc[-1]:.2f}", None),
+        ("HIGH (D)",    f"₹{df['High'].iloc[-1]:.2f}", None),
+        ("LOW (D)",     f"₹{df['Low'].iloc[-1]:.2f}", None),
         ("VOLUME",      f"{vol/1e6:.1f}M", f"avg {avg_vol/1e6:.1f}M"),
-        ("52W RANGE",   f"${df['Low'].tail(252).min():.0f}–${df['High'].tail(252).max():.0f}", None),
+        ("52W RANGE",   f"₹{df['Low'].tail(252).min():.0f}–₹{df['High'].tail(252).max():.0f}", None),
     ]
     for col, (lbl, val, delta) in zip(cols, metrics):
         with col:
@@ -574,15 +574,15 @@ def render_structure_tab(df, analysis):
         ], "Do not fight price", style="cyan")
     with c3:
         ta_card("MODULE_04", "Support & Resistance", [
-            f"Major S:   ${ms.get('major_support', 0):.2f}",
-            f"Major R:   ${ms.get('major_resistance', 0):.2f}",
-            f"Nearest S: ${ms.get('nearest_support', 0):.2f}",
-            f"Nearest R: ${ms.get('nearest_resistance', 0):.2f}",
+            f"Major S:   ₹{ms.get('major_support', 0):.2f}",
+            f"Major R:   ₹{ms.get('major_resistance', 0):.2f}",
+            f"Nearest S: ₹{ms.get('nearest_support', 0):.2f}",
+            f"Nearest R: ₹{ms.get('nearest_resistance', 0):.2f}",
         ], "Levels matter", style="warn")
     with c4:
         ta_card("MODULE_05", "Demand & Supply", [
-            f"Demand:  ${ms.get('demand_low', 0):.2f} – ${ms.get('demand_high', 0):.2f}",
-            f"Supply:  ${ms.get('supply_low', 0):.2f} – ${ms.get('supply_high', 0):.2f}",
+            f"Demand:  ₹{ms.get('demand_low', 0):.2f} – ₹{ms.get('demand_high', 0):.2f}",
+            f"Supply:  ₹{ms.get('supply_low', 0):.2f} – ₹{ms.get('supply_high', 0):.2f}",
             f"Strength: {ms.get('zone_strength', 'N/A')}",
             f"Tested:   {ms.get('zone_tested', 'N/A')}",
         ], "Where institutions may act")
@@ -653,7 +653,7 @@ def render_patterns_tab(df, analysis):
         ta_card("MODULE_07", "Breakouts & Breakdowns", [
             f"Status:       {bk.get('status', 'N/A')}",
             f"Type:         {bk.get('type', 'N/A')}",
-            f"Level:        ${bk.get('level', 0):.2f}",
+            f"Level:        ₹{bk.get('level', 0):.2f}",
             f"Retest:       {bk.get('retest', 'N/A')}",
             f"Confirmed:    {bk.get('confirmed', 'N/A')}",
         ], "Real or trap?", style="warn")
@@ -671,8 +671,8 @@ def render_patterns_tab(df, analysis):
         ta_card("MODULE_09", "Chart Patterns", [
             f"Pattern:      {chp.get('pattern', 'None')}",
             f"Completion:   {chp.get('completion', 'N/A')}",
-            f"Target:       ${chp.get('target', 0):.2f}",
-            f"Invalidation: ${chp.get('invalidation', 0):.2f}",
+            f"Target:       ₹{chp.get('target', 0):.2f}",
+            f"Invalidation: ₹{chp.get('invalidation', 0):.2f}",
         ], "Pattern with context only")
 
     # Recent candle signals table
@@ -738,19 +738,19 @@ def render_trade_tab(df, analysis, cfg):
         rr    = tp.get("rr_ratio", 0)
 
         ta_card("MODULE_11", "Trade Planning", [
-            f"Entry Zone:  ${entry:.2f}",
-            f"Stop Loss:   ${sl:.2f}  ({((sl-entry)/entry*100):+.1f}%)",
-            f"Target 1:    ${t1:.2f}  ({((t1-entry)/entry*100):+.1f}%)",
-            f"Target 2:    ${t2:.2f}  ({((t2-entry)/entry*100):+.1f}%)",
+            f"Entry Zone:  ₹{entry:.2f}",
+            f"Stop Loss:   ₹{sl:.2f}  ({((sl-entry)/entry*100):+.1f}%)",
+            f"Target 1:    ₹{t1:.2f}  ({((t1-entry)/entry*100):+.1f}%)",
+            f"Target 2:    ₹{t2:.2f}  ({((t2-entry)/entry*100):+.1f}%)",
             f"R:R Ratio:   1 : {rr:.1f}",
         ], "Plan before price", style="cyan")
     with c2:
         ta_card("MODULE_12", "Risk Management", [
-            f"Capital:     ${cfg['capital']:,.0f}",
+            f"Capital:     ₹{cfg['capital']:,.0f}",
             f"Risk %:      {cfg['risk_pct']}%",
-            f"Risk $:      ${rm.get('risk_amount', 0):,.0f}",
-            f"Position Sz: {rm.get('position_size', 0):.0f} shares",
-            f"Notional:    ${rm.get('notional', 0):,.0f}",
+            f"Risk ₹:      ₹{rm.get('risk_amount', 0):,.0f}",
+            f"Position Sz: {rm.get('position_size', 0):.0f} qty",
+            f"Notional:    ₹{rm.get('notional', 0):,.0f}",
         ], "First survive", style="danger")
 
     # Risk-Reward visual
@@ -780,8 +780,9 @@ def _plot_rr(df, tp):
     fig.add_trace(go.Candlestick(
         x=dff.index, open=dff["Open"], high=dff["High"],
         low=dff["Low"], close=dff["Close"],
-        increasing_line_color="#00ff6a", decreasing_line_color="#ff3355",
-        name="Price", line_width=1,
+        increasing=dict(line=dict(color="#00ff6a", width=1), fillcolor="#00ff6a22"),
+        decreasing=dict(line=dict(color="#ff3355", width=1), fillcolor="#ff335522"),
+        name="Price",
     ))
     for level, color, label in [
         (entry, "#00ffcc", "ENTRY"),
@@ -791,7 +792,7 @@ def _plot_rr(df, tp):
     ]:
         fig.add_hline(
             y=level, line=dict(color=color, width=1.5, dash="dash"),
-            annotation_text=f"{label} ${level:.2f}",
+            annotation_text=f"{label} ₹{level:.2f}",
             annotation_font_size=9, annotation_font_color=color,
         )
     # Zones
