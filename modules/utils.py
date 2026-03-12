@@ -1,4 +1,4 @@
-def format_currency(value: float, prefix: str = "$") -> str:
+def format_currency(value: float, prefix: str = "INR") -> str:
     if value >= 1e9:
         return f"{prefix}{value/1e9:.1f}B"
     if value >= 1e6:
