@@ -99,17 +99,38 @@ html, body, [class*="css"] {
     box-shadow: 0 0 12px #00ff6a55 !important;
 }
 
-/* ── Metrics ── */
-[data-testid="metric-container"] {
+/* ── Metric Cards ── */
+.metric-card {
     background: #040f08;
     border: 1px solid #0d3318;
     border-top: 2px solid #00ff6a;
-    padding: 12px !important;
+    padding: 12px 14px;
+    margin-bottom: 4px;
 }
-[data-testid="metric-container"] label { color: #3a6648 !important; font-size: 11px !important; letter-spacing: 2px; font-family: 'Orbitron', monospace !important; text-transform: uppercase; }
-[data-testid="metric-container"] [data-testid="stMetricValue"] { color: #00ff6a !important; font-family: 'Orbitron', monospace !important; font-size: 14px !important; letter-spacing: 1px; }
-[data-testid="metric-container"] [data-testid="stMetricDelta"] { font-size: 11px !important; font-family: 'Share Tech Mono', monospace !important; color: #ffaa00 !important; }
-[data-testid="metric-container"] [data-testid="stMetricDelta"] svg { display: none; }
+.metric-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px;
+    color: #3a6648;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.metric-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    color: #00ff6a;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    word-break: break-all;
+}
+.metric-delta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: #ffaa00;
+    letter-spacing: 1px;
+}
+.metric-delta.positive { color: #00ff6a; }
+.metric-delta.negative { color: #ff3355; }
 
 /* ── Tabs ── */
 [data-baseweb="tab-list"] { background: #040f08 !important; border-bottom: 1px solid #0d3318 !important; gap: 0 !important; }
@@ -328,7 +349,7 @@ def render_sidebar():
     risk_pct = st.sidebar.slider("", 0.5, 5.0, 1.0, 0.5, key="risk_pct", label_visibility="collapsed")
 
     # Capital
-    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>CAPITAL (INR)</div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>CAPITAL (₹)</div>", unsafe_allow_html=True)
     capital = st.sidebar.number_input("", value=100000, step=10000, key="capital", label_visibility="collapsed")
 
     # Indicators
@@ -532,18 +553,26 @@ def render_overview_tab(df, info, indicators, cfg):
     vol  = df["Volume"].iloc[-1]
     avg_vol = df["Volume"].rolling(20).mean().iloc[-1]
 
-    cols = st.columns(6)
     metrics = [
-        ("LAST PRICE",  f"INR{last:.2f}",  f"{chg:+.2f}"),
-        ("CHANGE",      f"{chg_pct:+.2f}%", None),
-        ("HIGH (D)",    f"INR{df['High'].iloc[-1]:.2f}", None),
-        ("LOW (D)",     f"INR{df['Low'].iloc[-1]:.2f}", None),
-        ("VOLUME",      f"{vol/1e6:.1f}M", f"avg {avg_vol/1e6:.1f}M"),
-        ("52W RANGE",   f"INR{df['Low'].tail(252).min():.0f}–INR{df['High'].tail(252).max():.0f}", None),
+        ("LAST PRICE", f"INR {last:,.2f}",  f"{chg:+.2f}",              "positive" if chg >= 0 else "negative"),
+        ("CHANGE",     f"{chg_pct:+.2f}%",  None,                       "positive" if chg_pct >= 0 else "negative"),
+        ("HIGH (D)",   f"INR {df['High'].iloc[-1]:,.2f}", None,          ""),
+        ("LOW (D)",    f"INR {df['Low'].iloc[-1]:,.2f}",  None,          ""),
+        ("VOLUME",     f"{vol/1e6:.2f}M",    f"avg {avg_vol/1e6:.2f}M", ""),
+        ("52W RANGE",  f"INR {df['Low'].tail(252).min():,.0f} – INR {df['High'].tail(252).max():,.0f}", None, ""),
     ]
-    for col, (lbl, val, delta) in zip(cols, metrics):
+    cols = st.columns(6)
+    for col, (lbl, val, delta, dcls) in zip(cols, metrics):
         with col:
-            st.metric(lbl, val, delta)
+            delta_html = f'<div class="metric-delta {dcls}">{delta}</div>' if delta else ""
+            st.markdown(
+                f'<div class="metric-card">'
+                f'<div class="metric-label">{lbl}</div>'
+                f'<div class="metric-value">{val}</div>'
+                f'{delta_html}'
+                f'</div>',
+                unsafe_allow_html=True
+            )
 
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
     st.plotly_chart(build_main_chart(df, indicators, cfg), use_container_width=True)
@@ -575,15 +604,15 @@ def render_structure_tab(df, analysis):
         ], "Do not fight price", style="cyan")
     with c3:
         ta_card("MODULE_04", "Support & Resistance", [
-            f"Major S:   INR{ms.get('major_support', 0):.2f}",
-            f"Major R:   INR{ms.get('major_resistance', 0):.2f}",
-            f"Nearest S: INR{ms.get('nearest_support', 0):.2f}",
-            f"Nearest R: INR{ms.get('nearest_resistance', 0):.2f}",
+            f"Major S:   ₹{ms.get('major_support', 0):.2f}",
+            f"Major R:   ₹{ms.get('major_resistance', 0):.2f}",
+            f"Nearest S: ₹{ms.get('nearest_support', 0):.2f}",
+            f"Nearest R: ₹{ms.get('nearest_resistance', 0):.2f}",
         ], "Levels matter", style="warn")
     with c4:
         ta_card("MODULE_05", "Demand & Supply", [
-            f"Demand:  INR{ms.get('demand_low', 0):.2f} – INR{ms.get('demand_high', 0):.2f}",
-            f"Supply:  INR{ms.get('supply_low', 0):.2f} – INR{ms.get('supply_high', 0):.2f}",
+            f"Demand:  ₹{ms.get('demand_low', 0):.2f} – ₹{ms.get('demand_high', 0):.2f}",
+            f"Supply:  ₹{ms.get('supply_low', 0):.2f} – ₹{ms.get('supply_high', 0):.2f}",
             f"Strength: {ms.get('zone_strength', 'N/A')}",
             f"Tested:   {ms.get('zone_tested', 'N/A')}",
         ], "Where institutions may act")
@@ -654,7 +683,7 @@ def render_patterns_tab(df, analysis):
         ta_card("MODULE_07", "Breakouts & Breakdowns", [
             f"Status:       {bk.get('status', 'N/A')}",
             f"Type:         {bk.get('type', 'N/A')}",
-            f"Level:        INR{bk.get('level', 0):.2f}",
+            f"Level:        ₹{bk.get('level', 0):.2f}",
             f"Retest:       {bk.get('retest', 'N/A')}",
             f"Confirmed:    {bk.get('confirmed', 'N/A')}",
         ], "Real or trap?", style="warn")
@@ -672,8 +701,8 @@ def render_patterns_tab(df, analysis):
         ta_card("MODULE_09", "Chart Patterns", [
             f"Pattern:      {chp.get('pattern', 'None')}",
             f"Completion:   {chp.get('completion', 'N/A')}",
-            f"Target:       INR{chp.get('target', 0):.2f}",
-            f"Invalidation: INR{chp.get('invalidation', 0):.2f}",
+            f"Target:       ₹{chp.get('target', 0):.2f}",
+            f"Invalidation: ₹{chp.get('invalidation', 0):.2f}",
         ], "Pattern with context only")
 
     # Recent candle signals table
@@ -739,19 +768,19 @@ def render_trade_tab(df, analysis, cfg):
         rr    = tp.get("rr_ratio", 0)
 
         ta_card("MODULE_11", "Trade Planning", [
-            f"Entry Zone:  INR{entry:.2f}",
-            f"Stop Loss:   INR{sl:.2f}  ({((sl-entry)/entry*100):+.1f}%)",
-            f"Target 1:    INR{t1:.2f}  ({((t1-entry)/entry*100):+.1f}%)",
-            f"Target 2:    INR{t2:.2f}  ({((t2-entry)/entry*100):+.1f}%)",
+            f"Entry Zone:  ₹{entry:.2f}",
+            f"Stop Loss:   ₹{sl:.2f}  ({((sl-entry)/entry*100):+.1f}%)",
+            f"Target 1:    ₹{t1:.2f}  ({((t1-entry)/entry*100):+.1f}%)",
+            f"Target 2:    ₹{t2:.2f}  ({((t2-entry)/entry*100):+.1f}%)",
             f"R:R Ratio:   1 : {rr:.1f}",
         ], "Plan before price", style="cyan")
     with c2:
         ta_card("MODULE_12", "Risk Management", [
-            f"Capital:     INR{cfg['capital']:,.0f}",
+            f"Capital:     ₹{cfg['capital']:,.0f}",
             f"Risk %:      {cfg['risk_pct']}%",
-            f"Risk INR:      INR{rm.get('risk_amount', 0):,.0f}",
+            f"Risk ₹:      ₹{rm.get('risk_amount', 0):,.0f}",
             f"Position Sz: {rm.get('position_size', 0):.0f} qty",
-            f"Notional:    INR{rm.get('notional', 0):,.0f}",
+            f"Notional:    ₹{rm.get('notional', 0):,.0f}",
         ], "First survive", style="danger")
 
     # Risk-Reward visual
@@ -793,7 +822,7 @@ def _plot_rr(df, tp):
     ]:
         fig.add_hline(
             y=level, line=dict(color=color, width=1.5, dash="dash"),
-            annotation_text=f"{label} INR{level:.2f}",
+            annotation_text=f"{label} ₹{level:.2f}",
             annotation_font_size=9, annotation_font_color=color,
         )
     # Zones
