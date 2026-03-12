@@ -117,7 +117,7 @@ html, body, [class*="css"] {
 }
 .metric-value {
     font-family: 'Orbitron', monospace;
-    font-size: 14px;
+    font-size: 10px;
     color: #00ff6a;
     letter-spacing: 1px;
     margin-bottom: 4px;
