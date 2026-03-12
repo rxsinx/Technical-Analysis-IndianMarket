@@ -106,8 +106,8 @@ html, body, [class*="css"] {
     border-top: 2px solid #00ff6a;
     padding: 12px !important;
 }
-[data-testid="metric-container"] label { color: #3a6648 !important; font-size: 10px !important; letter-spacing: 2px; }
-[data-testid="metric-container"] [data-testid="stMetricValue"] { color: #00ff6a !important; font-family: 'Orbitron', monospace !important; font-size: 18px !important; }
+[data-testid="metric-container"] label { color: #3a6648 !important; font-size: 11px !important; letter-spacing: 2px; }
+[data-testid="metric-container"] [data-testid="stMetricValue"] { color: #00ff6a !important; font-family: 'Orbitron', monospace !important; font-size: 14px !important; }
 [data-testid="metric-container"] [data-testid="stMetricDelta"] svg { display: none; }
 
 /* ── Tabs ── */
