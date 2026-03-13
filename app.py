@@ -22,6 +22,8 @@ from modules.trade_planning import generate_trade_plan
 from modules.risk_management import calculate_risk
 from modules.indicators import compute_indicators
 from modules.utils import format_currency, get_color
+from modules.darvas_box import detect_darvas_boxes
+from modules.trading_signal import compute_trading_signal
 
 # ── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -104,35 +106,49 @@ html, body, [class*="css"] {
     background: #040f08;
     border: 1px solid #0d3318;
     border-top: 2px solid #00ff6a;
-    padding: 12px 14px;
+    padding: 10px 10px 8px 10px;
     margin-bottom: 4px;
+    overflow: hidden;
 }
 .metric-label {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 9px;
-    color: #3a6648;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 5px;
+    font-family: 'Share Tech Mono', monospace !important;
+    font-size: 9px !important;
+    color: #3a6648 !important;
+    letter-spacing: 1.5px !important;
+    text-transform: uppercase !important;
+    margin-bottom: 4px !important;
+    display: block !important;
 }
+.metric-prefix {
+    font-family: 'Share Tech Mono', monospace !important;
+    font-size: 9px !important;
+    color: #007733 !important;
+    letter-spacing: 1px !important;
+    display: block !important;
+    margin-bottom: 1px !important;
+}    
 .metric-value {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: #00ff6a;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-family: 'Share Tech Mono', monospace !important;
+    font-size: 15px !important;
+    font-weight: bold !important;
+    color: #00ff6a !important;
+    letter-spacing: 0.5px !important;
+    margin-bottom: 3px !important;
+    display: block !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
 }
 .metric-delta {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: #ffaa00;
-    letter-spacing: 1px;
+    font-family: 'Share Tech Mono', monospace !important;
+    font-size: 10px !important;
+    color: #ffaa00 !important;
+    letter-spacing: 0.5px !important;
+    display: block !important;
 }
-.metric-delta.positive { color: #00ff6a; }
-.metric-delta.negative { color: #ff3355; }
+.metric-delta.positive { color: #00ff6a !important; }
+.metric-delta.negative { color: #ff3355 !important; }
 
 /* ── Tabs ── */
 [data-baseweb="tab-list"] { background: #040f08 !important; border-bottom: 1px solid #0d3318 !important; gap: 0 !important; }
@@ -202,7 +218,7 @@ td { color: #a0ffc0 !important; border-bottom: 1px solid #0a1a0e !important; }
     padding: 3px 6px;
     border-left: 2px solid #004422;
     margin: 3px 0;
-    font-size: 10px;
+    font-size: 12px;
 }
 .ta-item-bullet { color: #007733; }
 
@@ -554,41 +570,41 @@ def render_overview_tab(df, info, indicators, cfg):
     chg_pct = chg / prev * 100
     vol  = df["Volume"].iloc[-1]
     avg_vol = df["Volume"].rolling(20).mean().iloc[-1]
-
-    metrics = [
-        ("LAST PRICE", f"INR {last:,.2f}",  f"{chg:+.2f}",              "positive" if chg >= 0 else "negative"),
-        ("CHANGE",     f"{chg_pct:+.2f}%",  None,                       "positive" if chg_pct >= 0 else "negative"),
-        ("HIGH (D)",   f"INR {df['High'].iloc[-1]:,.2f}", None,          ""),
-        ("LOW (D)",    f"INR {df['Low'].iloc[-1]:,.2f}",  None,          ""),
-        ("VOLUME",     f"{vol/1e6:.2f}M",    f"avg {avg_vol/1e6:.2f}M", ""),
-        ("52W RANGE",  f"{df['Low'].tail(252).min():,.0f} – {df['High'].tail(252).max():,.0f}", None, ""),
-    ]
+ 
+    def _m(lbl, prefix, val, delta=None, dcls=""):
+        d_html = f'<span class="metric-delta {dcls}">{delta}</span>' if delta else ""
+        p_html = f'<span class="metric-prefix">{prefix}</span>' if prefix else ""
+        st.markdown(
+            f'<div class="metric-card">'
+            f'<span class="metric-label">{lbl}</span>'
+            f'{p_html}'
+            f'<span class="metric-value">{val}</span>'
+            f'{d_html}'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+ 
     cols = st.columns(6)
-    for col, (lbl, val, delta, dcls) in zip(cols, metrics):
-        with col:
-            delta_html = f'<div class="metric-delta {dcls}">{delta}</div>' if delta else ""
-            st.markdown(
-                f'<div class="metric-card">'
-                f'<div class="metric-label">{lbl}</div>'
-                f'<div class="metric-value">{val}</div>'
-                f'{delta_html}'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-
+    with cols[0]: _m("LAST PRICE", "INR", f"{last:,.2f}",   f"{chg:+.2f}",             "positive" if chg>=0 else "negative")
+    with cols[1]: _m("CHANGE",     "",    f"{chg_pct:+.2f}%", None,                     "positive" if chg_pct>=0 else "negative")
+    with cols[2]: _m("HIGH (D)",   "INR", f"{df['High'].iloc[-1]:,.2f}")
+    with cols[3]: _m("LOW (D)",    "INR", f"{df['Low'].iloc[-1]:,.2f}")
+    with cols[4]: _m("VOLUME",     "",    f"{vol/1e6:.2f}M", f"avg {avg_vol/1e6:.2f}M")
+    with cols[5]: _m("52W RANGE",  "INR", f"{df['Low'].tail(252).min():,.0f}–{df['High'].tail(252).max():,.0f}")
+ 
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
     st.plotly_chart(build_main_chart(df, indicators, cfg), use_container_width=True)
-
-
+ 
+ 
 def render_structure_tab(df, analysis):
     st.markdown("""
     <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
     letter-spacing:3px;margin-bottom:16px;">MODULE 02–03 &nbsp;|&nbsp; MARKET STRUCTURE & TREND</div>
     """, unsafe_allow_html=True)
-
+ 
     ms = analysis.get("market_structure", {})
     tr = analysis.get("trend", {})
-
+ 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         ta_card("MODULE_02", "Market Structure", [
@@ -606,24 +622,24 @@ def render_structure_tab(df, analysis):
         ], "Do not fight price", style="cyan")
     with c3:
         ta_card("MODULE_04", "Support & Resistance", [
-            f"Major S:   INR{ms.get('major_support', 0):.2f}",
-            f"Major R:   INR{ms.get('major_resistance', 0):.2f}",
-            f"Nearest S: INR{ms.get('nearest_support', 0):.2f}",
-            f"Nearest R: INR{ms.get('nearest_resistance', 0):.2f}",
+            f"Major S:   ₹{ms.get('major_support', 0):.2f}",
+            f"Major R:   ₹{ms.get('major_resistance', 0):.2f}",
+            f"Nearest S: ₹{ms.get('nearest_support', 0):.2f}",
+            f"Nearest R: ₹{ms.get('nearest_resistance', 0):.2f}",
         ], "Levels matter", style="warn")
     with c4:
         ta_card("MODULE_05", "Demand & Supply", [
-            f"Demand:  INR{ms.get('demand_low', 0):.2f} – INR{ms.get('demand_high', 0):.2f}",
-            f"Supply:  INR{ms.get('supply_low', 0):.2f} – INR{ms.get('supply_high', 0):.2f}",
+            f"Demand:  ₹{ms.get('demand_low', 0):.2f} – ₹{ms.get('demand_high', 0):.2f}",
+            f"Supply:  ₹{ms.get('supply_low', 0):.2f} – ₹{ms.get('supply_high', 0):.2f}",
             f"Strength: {ms.get('zone_strength', 'N/A')}",
             f"Tested:   {ms.get('zone_tested', 'N/A')}",
         ], "Where institutions may act")
-
+ 
     # Structure chart
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
     _plot_structure(df, ms)
-
-
+ 
+ 
 def _plot_structure(df, ms):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -659,19 +675,20 @@ def _plot_structure(df, ms):
         yaxis=dict(gridcolor="#0d3318"),
     )
     st.plotly_chart(fig, use_container_width=True)
-
-
+ 
+ 
 def render_patterns_tab(df, analysis):
     st.markdown("""
     <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
     letter-spacing:3px;margin-bottom:16px;">MODULE 06–09 &nbsp;|&nbsp; PATTERNS & SIGNALS</div>
     """, unsafe_allow_html=True)
-
+ 
     cp  = analysis.get("candlestick_patterns", {})
     bk  = analysis.get("breakouts", {})
     vol = analysis.get("volume", {})
     chp = analysis.get("chart_patterns", {})
-
+    dvb = analysis.get("darvas_box", {})
+ 
     c1, c2 = st.columns(2)
     with c1:
         ta_card("MODULE_06", "Candlestick Behaviour", [
@@ -685,11 +702,11 @@ def render_patterns_tab(df, analysis):
         ta_card("MODULE_07", "Breakouts & Breakdowns", [
             f"Status:       {bk.get('status', 'N/A')}",
             f"Type:         {bk.get('type', 'N/A')}",
-            f"Level:        INR{bk.get('level', 0):.2f}",
+            f"Level:        ₹{bk.get('level', 0):.2f}",
             f"Retest:       {bk.get('retest', 'N/A')}",
             f"Confirmed:    {bk.get('confirmed', 'N/A')}",
         ], "Real or trap?", style="warn")
-
+ 
     c3, c4 = st.columns(2)
     with c3:
         ta_card("MODULE_08", "Volume Analysis", [
@@ -703,26 +720,31 @@ def render_patterns_tab(df, analysis):
         ta_card("MODULE_09", "Chart Patterns", [
             f"Pattern:      {chp.get('pattern', 'None')}",
             f"Completion:   {chp.get('completion', 'N/A')}",
-            f"Target:       INR{chp.get('target', 0):.2f}",
-            f"Invalidation: INR{chp.get('invalidation', 0):.2f}",
+            f"Target:       ₹{chp.get('target', 0):.2f}",
+            f"Invalidation: ₹{chp.get('invalidation', 0):.2f}",
         ], "Pattern with context only")
-
+ 
+    # Darvas Box
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+    st.markdown('<div style="font-family:\'Orbitron\',monospace;font-size:11px;color:#00ffcc;letter-spacing:3px;margin-bottom:12px;">MODULE 09B &nbsp;|&nbsp; DARVAS BOX (ADVANCED)</div>', unsafe_allow_html=True)
+    _render_darvas_box(dvb)
+ 
     # Recent candle signals table
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
     st.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-bottom:8px;'>RECENT CANDLESTICK SIGNALS</div>", unsafe_allow_html=True)
     if "history" in cp and cp["history"]:
         hist_df = pd.DataFrame(cp["history"])
         st.dataframe(hist_df, use_container_width=True, hide_index=True)
-
-
+ 
+ 
 def render_mtf_tab(df, analysis, symbol, period):
     st.markdown("""
     <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
     letter-spacing:3px;margin-bottom:16px;">MODULE 10 &nbsp;|&nbsp; MULTI-TIMEFRAME ANALYSIS</div>
     """, unsafe_allow_html=True)
-
+ 
     mtf = analysis.get("mtf", {})
-
+ 
     cols = st.columns(4)
     tfs  = [("MONTHLY", "monthly"), ("WEEKLY", "weekly"), ("DAILY", "daily"), ("4H", "h4")]
     for col, (label, key) in zip(cols, tfs):
@@ -736,7 +758,7 @@ def render_mtf_tab(df, analysis, symbol, period):
                 f"RSI:      {d.get('rsi', 'N/A')}",
                 f"Volume:   {d.get('volume', 'N/A')}",
             ], d.get("note", "—"), style=style)
-
+ 
     # Alignment summary
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
     alignment = mtf.get("alignment", "MIXED")
@@ -749,17 +771,17 @@ def render_mtf_tab(df, analysis, symbol, period):
         <div style="font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:8px;">Alignment is power</div>
     </div>
     """, unsafe_allow_html=True)
-
-
+ 
+ 
 def render_trade_tab(df, analysis, cfg):
     st.markdown("""
     <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
     letter-spacing:3px;margin-bottom:16px;">MODULE 11–13 &nbsp;|&nbsp; TRADE PLANNING & EXECUTION</div>
     """, unsafe_allow_html=True)
-
+ 
     tp = analysis.get("trade_plan", {})
     rm = analysis.get("risk", {})
-
+ 
     c1, c2 = st.columns(2)
     with c1:
         last = df["Close"].iloc[-1]
@@ -768,27 +790,27 @@ def render_trade_tab(df, analysis, cfg):
         t1    = tp.get("target1", last * 1.03)
         t2    = tp.get("target2", last * 1.06)
         rr    = tp.get("rr_ratio", 0)
-
+ 
         ta_card("MODULE_11", "Trade Planning", [
-            f"Entry Zone:  INR{entry:.2f}",
-            f"Stop Loss:   INR{sl:.2f}  ({((sl-entry)/entry*100):+.1f}%)",
-            f"Target 1:    INR{t1:.2f}  ({((t1-entry)/entry*100):+.1f}%)",
-            f"Target 2:    INR{t2:.2f}  ({((t2-entry)/entry*100):+.1f}%)",
+            f"Entry Zone:  ₹{entry:.2f}",
+            f"Stop Loss:   ₹{sl:.2f}  ({((sl-entry)/entry*100):+.1f}%)",
+            f"Target 1:    ₹{t1:.2f}  ({((t1-entry)/entry*100):+.1f}%)",
+            f"Target 2:    ₹{t2:.2f}  ({((t2-entry)/entry*100):+.1f}%)",
             f"R:R Ratio:   1 : {rr:.1f}",
         ], "Plan before price", style="cyan")
     with c2:
         ta_card("MODULE_12", "Risk Management", [
-            f"Capital:     INR{cfg['capital']:,.0f}",
+            f"Capital:     ₹{cfg['capital']:,.0f}",
             f"Risk %:      {cfg['risk_pct']}%",
-            f"Risk INR:      INR{rm.get('risk_amount', 0):,.0f}",
+            f"Risk ₹:      ₹{rm.get('risk_amount', 0):,.0f}",
             f"Position Sz: {rm.get('position_size', 0):.0f} qty",
-            f"Notional:    INR{rm.get('notional', 0):,.0f}",
+            f"Notional:    ₹{rm.get('notional', 0):,.0f}",
         ], "First survive", style="danger")
-
+ 
     # Risk-Reward visual
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
     _plot_rr(df, tp)
-
+ 
     # Execution checklist
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
     ta_card("MODULE_13", "Execution Checklist", [
@@ -798,8 +820,8 @@ def render_trade_tab(df, analysis, cfg):
         f"✓ Exit without ego if wrong",
         f"✓ Journal every trade",
     ], "Discipline is edge")
-
-
+ 
+ 
 def _plot_rr(df, tp):
     last_n = min(60, len(df))
     dff = df.tail(last_n)
@@ -807,7 +829,7 @@ def _plot_rr(df, tp):
     sl    = tp.get("stop_loss", entry * 0.97)
     t1    = tp.get("target1",  entry * 1.03)
     t2    = tp.get("target2",  entry * 1.06)
-
+ 
     fig = go.Figure()
     fig.add_trace(go.Candlestick(
         x=dff.index, open=dff["Open"], high=dff["High"],
@@ -824,13 +846,13 @@ def _plot_rr(df, tp):
     ]:
         fig.add_hline(
             y=level, line=dict(color=color, width=1.5, dash="dash"),
-            annotation_text=f"{label} INR{level:.2f}",
+            annotation_text=f"{label} ₹{level:.2f}",
             annotation_font_size=9, annotation_font_color=color,
         )
     # Zones
     fig.add_hrect(y0=sl, y1=entry, fillcolor="rgba(255,51,85,0.07)", line_width=0)
     fig.add_hrect(y0=entry, y1=t2, fillcolor="rgba(0,255,106,0.07)", line_width=0)
-
+ 
     fig.update_layout(
         paper_bgcolor="#020c06", plot_bgcolor="#040f08",
         font=dict(family="Share Tech Mono", color="#a0ffc0", size=10),
@@ -840,14 +862,224 @@ def _plot_rr(df, tp):
         showlegend=False,
     )
     st.plotly_chart(fig, use_container_width=True)
-
-
+ 
+ 
+ 
+def _render_darvas_box(dvb: dict):
+    """Render Darvas Box analysis with table."""
+    import pandas as _pd
+    if not dvb or dvb.get("box_top", 0) == 0:
+        st.markdown("<div style='color:#3a6648;font-size:11px;'>No Darvas Box detected in current data.</div>", unsafe_allow_html=True)
+        return
+ 
+    box_top    = dvb.get("box_top", 0)
+    box_bottom = dvb.get("box_bottom", 0)
+    width      = dvb.get("width", 0)
+    width_pct  = dvb.get("width_pct", 0)
+    entry      = dvb.get("entry", 0)
+    sl         = dvb.get("stop_loss", 0)
+    target     = dvb.get("target", 0)
+    rr         = dvb.get("rr", 0)
+    status     = dvb.get("status", "N/A")
+    brk        = dvb.get("breakout", False)
+    brk_price  = dvb.get("breakout_price")
+    brk_date   = dvb.get("breakout_date", "—")
+    total      = dvb.get("total_boxes", 0)
+ 
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        ta_card("DARVAS // BOX", "Box Boundaries", [
+            f"Box Top:     INR{box_top:,.2f}",
+            f"Box Bottom:  INR{box_bottom:,.2f}",
+            f"Width:       INR{width:,.2f}  ({width_pct:.1f}%)",
+            f"Boxes Found: {total}",
+        ], "Box = institutional accumulation zone", style="cyan")
+    with c2:
+        ta_card("DARVAS // TRADE", "Entry & Exits", [
+            f"Entry:       INR{entry:,.2f}  (above box top)",
+            f"Stop Loss:   INR{sl:,.2f}  (below box bottom)",
+            f"Target:      INR{target:,.2f}  (1x width proj.)",
+            f"R:R Ratio:   1:{rr}",
+        ], "Buy strength, not weakness", style="warn")
+    with c3:
+        brk_text = f"INR{brk_price:,.2f} on {brk_date}" if brk and brk_price else "Not yet triggered"
+        ta_card("DARVAS // STATUS", "Breakout Monitor", [
+            f"Status:      {status}",
+            f"Breakout At: {brk_text}",
+            f"R:R:         1:{rr}",
+        ], "Breakout + Volume = Edge")
+ 
+    history = dvb.get("history", [])
+    if history:
+        st.markdown("<div style='font-size:9px;color:#3a6648;letter-spacing:2px;margin:8px 0 4px;'>RECENT BOX HISTORY</div>", unsafe_allow_html=True)
+        hist_rows = []
+        for b in reversed(history):
+            hist_rows.append({
+                "Top Date":   b.get("top_date", "—"),
+                "Box Top":    f"INR{b['box_top']:,.2f}",
+                "Box Bottom": f"INR{b['box_bottom']:,.2f}",
+                "Width %":    f"{b['width_pct']}%",
+                "Entry":      f"INR{b['entry']:,.2f}",
+                "Stop Loss":  f"INR{b['stop_loss']:,.2f}",
+                "Target":     f"INR{b['target']:,.2f}",
+                "Breakout":   "YES" if b['breakout'] else "—",
+                "Brk Price":  f"INR{b['breakout_price']:,.2f}" if b['breakout_price'] else "—",
+            })
+        st.dataframe(_pd.DataFrame(hist_rows), use_container_width=True, hide_index=True)
+ 
+ 
+def render_signal_tab(analysis: dict):
+    """Trading Signal & Analysis panel."""
+    st.markdown("""
+    <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
+    letter-spacing:3px;margin-bottom:16px;">MODULE 17 &nbsp;|&nbsp; TRADING SIGNAL & ANALYSIS</div>
+    """, unsafe_allow_html=True)
+ 
+    sig = analysis.get("trading_signal", {})
+    if not sig:
+        st.markdown("<div style='color:#3a6648;'>Signal data unavailable.</div>", unsafe_allow_html=True)
+        return
+ 
+    score      = sig.get("score", 0)
+    label      = sig.get("label", "N/A")
+    sig_color  = sig.get("color", "#ffaa00")
+    signals    = sig.get("signals", [])
+    bull_count = sig.get("bull_count", 0)
+    bear_count = sig.get("bear_count", 0)
+    neu_count  = sig.get("neutral_count", 0)
+ 
+    col_left, col_right = st.columns([1, 2])
+ 
+    with col_left:
+        # Signal label
+        st.markdown(f"""
+        <div style="background:#040f08;border:1px solid {sig_color};
+        border-top:3px solid {sig_color};padding:16px;text-align:center;margin-bottom:10px;">
+            <div style="font-size:9px;color:#3a6648;letter-spacing:3px;margin-bottom:8px;">COMPOSITE SIGNAL</div>
+            <div style="font-family:'Orbitron',monospace;font-size:26px;font-weight:900;
+            color:{sig_color};text-shadow:0 0 16px {sig_color}88;letter-spacing:4px;">{label}</div>
+            <div style="font-size:12px;color:#3a6648;margin-top:8px;letter-spacing:1px;">
+            Score: {score:+.1f} / 100</div>
+        </div>
+        """, unsafe_allow_html=True)
+ 
+        # Gauge chart
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=score,
+            number=dict(font=dict(family="Orbitron", size=32, color=sig_color), suffix=""),
+            title=dict(text="Signal Strength", font=dict(family="Share Tech Mono", size=11, color="#3a6648")),
+            gauge=dict(
+                axis=dict(
+                    range=[-100, 100],
+                    tickvals=[-100, -60, -25, 0, 25, 60, 100],
+                    ticktext=["-100", "-60", "-25", "0", "+25", "+60", "+100"],
+                    tickfont=dict(size=8, color="#3a6648"),
+                    tickcolor="#0d3318",
+                ),
+                bar=dict(color=sig_color, thickness=0.2),
+                bgcolor="#040f08",
+                borderwidth=1,
+                bordercolor="#0d3318",
+                steps=[
+                    dict(range=[-100, -60], color="#330011"),
+                    dict(range=[-60,  -25], color="#220008"),
+                    dict(range=[-25,   10], color="#151005"),
+                    dict(range=[ 10,   25], color="#001a0a"),
+                    dict(range=[ 25,   60], color="#003311"),
+                    dict(range=[ 60,  100], color="#004d1a"),
+                ],
+                threshold=dict(
+                    line=dict(color=sig_color, width=3),
+                    thickness=0.8,
+                    value=score,
+                ),
+            ),
+        ))
+        fig_gauge.update_layout(
+            paper_bgcolor="#020c06",
+            plot_bgcolor="#020c06",
+            font=dict(family="Share Tech Mono", color="#a0ffc0"),
+            height=230,
+            margin=dict(l=10, r=10, t=30, b=0),
+        )
+        st.plotly_chart(fig_gauge, use_container_width=True)
+ 
+        # Bull / Bear / Neutral counts
+        st.markdown(f"""
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px;">
+            <div style="background:#002211;border:1px solid #007733;padding:8px;text-align:center;">
+                <div style="font-size:8px;color:#3a6648;letter-spacing:1px;margin-bottom:2px;">BULL</div>
+                <div style="font-family:'Orbitron',monospace;font-size:20px;color:#00ff6a;">{bull_count}</div>
+            </div>
+            <div style="background:#1a0008;border:1px solid #ff3355;padding:8px;text-align:center;">
+                <div style="font-size:8px;color:#3a6648;letter-spacing:1px;margin-bottom:2px;">BEAR</div>
+                <div style="font-family:'Orbitron',monospace;font-size:20px;color:#ff3355;">{bear_count}</div>
+            </div>
+            <div style="background:#1a1000;border:1px solid #ffaa00;padding:8px;text-align:center;">
+                <div style="font-size:8px;color:#3a6648;letter-spacing:1px;margin-bottom:2px;">NEUT</div>
+                <div style="font-family:'Orbitron',monospace;font-size:20px;color:#ffaa00;">{neu_count}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+ 
+    with col_right:
+        # Detailed signals
+        type_icon  = {"bull": "▲", "bear": "▼", "warn": "⚠", "neutral": "●"}
+        type_color = {"bull": "#00ff6a", "bear": "#ff3355", "warn": "#ffaa00", "neutral": "#3a6648"}
+        type_bg    = {"bull": "#001a0a", "bear": "#1a0008", "warn": "#1a1000", "neutral": "#040f08"}
+ 
+        items_html = ""
+        for s in signals:
+            t     = s.get("type", "neutral")
+            icon  = type_icon.get(t, "●")
+            color = type_color.get(t, "#3a6648")
+            bg    = type_bg.get(t, "#040f08")
+            items_html += (
+                f'<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;'
+                f'background:{bg};border-left:3px solid {color};margin-bottom:3px;font-size:11px;letter-spacing:0.5px;">'
+                f'<span style="color:{color};font-size:14px;min-width:16px;">{icon}</span>'
+                f'<span style="color:#a0ffc0;">{s["text"]}</span>'
+                f'</div>'
+            )
+ 
+        st.markdown(f"""
+        <div style="background:#040f08;border:1px solid #0d3318;border-top:2px solid #00ffcc;padding:14px;">
+            <div style="font-family:'Orbitron',monospace;font-size:10px;color:#00ffcc;
+            letter-spacing:3px;margin-bottom:12px;">▶ DETAILED ANALYSIS SIGNALS</div>
+            {items_html}
+        </div>
+        """, unsafe_allow_html=True)
+ 
+    # Signal bar
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-size:9px;color:#3a6648;letter-spacing:2px;margin-bottom:6px;'>SIGNAL BREAKDOWN</div>", unsafe_allow_html=True)
+ 
+    fig_bar = go.Figure(go.Bar(
+        x=["Bullish Signals", "Bearish Signals", "Neutral / Watch"],
+        y=[bull_count, bear_count, neu_count],
+        marker_color=["#00ff6a", "#ff3355", "#ffaa00"],
+        text=[bull_count, bear_count, neu_count],
+        textposition="outside",
+        textfont=dict(color="#a0ffc0", size=12, family="Orbitron"),
+        width=0.4,
+    ))
+    fig_bar.update_layout(
+        paper_bgcolor="#020c06", plot_bgcolor="#040f08",
+        font=dict(family="Share Tech Mono", color="#a0ffc0", size=10),
+        height=200, margin=dict(l=0, r=0, t=10, b=0),
+        xaxis=dict(gridcolor="#0d3318", showgrid=False),
+        yaxis=dict(gridcolor="#0d3318", showgrid=True, zeroline=False),
+        showlegend=False,
+    )
+    st.plotly_chart(fig_bar, use_container_width=True)
+ 
 def render_review_tab(analysis):
     st.markdown("""
     <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
     letter-spacing:3px;margin-bottom:16px;">MODULE 14–16 &nbsp;|&nbsp; REVIEW & FINAL RESULT</div>
     """, unsafe_allow_html=True)
-
+ 
     c1, c2 = st.columns(2)
     with c1:
         ta_card("MODULE_14", "Common Traps — Check", [
@@ -864,7 +1096,7 @@ def render_review_tab(analysis):
             "□  Lesson noted",
             "□  Journal updated",
         ], "Journal or repeat pain", style="warn")
-
+ 
     # Final result
     st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
     final = analysis.get("final_result", {})
@@ -873,9 +1105,9 @@ def render_review_tab(analysis):
     risk_q  = final.get("risk",    "MANAGED")
     exit_q  = final.get("exit",    "PENDING")
     overall = final.get("overall", "NEUTRAL")
-
+ 
     color = "#00ff6a" if overall in ("BULLISH","LONG") else ("#ff3355" if overall in ("BEARISH","SHORT") else "#ffaa00")
-
+ 
     st.markdown(f"""
     <div style="background:#040f08;border:1px solid #007733;padding:24px;margin-top:8px;">
         <div style="font-family:'Orbitron',monospace;font-size:11px;color:#3a6648;
@@ -913,7 +1145,7 @@ def render_review_tab(analysis):
 def main():
     render_header()
     cfg = render_sidebar()
-
+ 
     # Initial state
     if "analysis" not in st.session_state:
         st.session_state.analysis = None
@@ -921,18 +1153,18 @@ def main():
         st.session_state.df = None
     if "info" not in st.session_state:
         st.session_state.info = {}
-
+ 
     # Auto-load on first run
     if st.session_state.df is None or cfg["analyze"]:
         with st.spinner("LOADING DATA..."):
             interval = TF_MAP.get(cfg["timeframe"], "1d")
             df = fetch_data(cfg["symbol"], interval, cfg["period"])
             info = fetch_info(cfg["symbol"])
-
+ 
             if df.empty:
                 st.error(f"⚠ No data found for symbol: {cfg['symbol']}")
                 st.stop()
-
+ 
             # Run all modules
             indicators = compute_indicators(df)
             ms   = analyze_market_structure(df)
@@ -946,11 +1178,11 @@ def main():
             mtf  = multi_timeframe_analysis(cfg["symbol"], cfg["period"])
             tp   = generate_trade_plan(df, ms, sr, tr)
             rm   = calculate_risk(df, tp, cfg["capital"], cfg["risk_pct"])
-
+ 
             # Merge SR & DZ into indicators for chart
             indicators["sr_levels"] = sr.get("levels", [])
             indicators["zones"]     = dz.get("zones", [])
-
+ 
             # Compose traps & final
             bias = tr.get("daily", "NEUTRAL")
             traps = {
@@ -965,7 +1197,10 @@ def main():
                 "exit":    "PLAN SET",
                 "overall": bias.upper() if bias != "N/A" else "NEUTRAL",
             }
-
+ 
+            dvb = detect_darvas_boxes(df)
+            sig = compute_trading_signal(df, indicators)
+ 
             st.session_state.df   = df
             st.session_state.info = info
             st.session_state.analysis = {
@@ -975,19 +1210,21 @@ def main():
                 "breakouts":        bk,
                 "volume":           vol,
                 "chart_patterns":   chp,
+                "darvas_box":       dvb,
                 "mtf":              mtf,
                 "trade_plan":       tp,
                 "risk":             rm,
                 "traps":            traps,
                 "final_result":     final,
+                "trading_signal":   sig,
             }
             st.session_state.indicators = indicators
-
+ 
     df         = st.session_state.df
     analysis   = st.session_state.analysis
     info       = st.session_state.info
     indicators = st.session_state.indicators
-
+ 
     # ── Symbol label
     name = info.get("shortName", cfg["symbol"])
     exchange = info.get("exchange", "")
@@ -998,7 +1235,7 @@ def main():
     <span style="font-size:11px;color:#3a6648;letter-spacing:2px;"> {name} &nbsp;|&nbsp; {exchange}</span>
     </div>
     """, unsafe_allow_html=True)
-
+ 
     # ── Tabs
     tabs = st.tabs([
         "📊  OVERVIEW",
@@ -1006,16 +1243,19 @@ def main():
         "🕯  PATTERNS",
         "🔭  MULTI-TF",
         "⚡  TRADE PLAN",
+        "📡  SIGNAL",
         "📋  REVIEW",
     ])
-
+ 
     with tabs[0]: render_overview_tab(df, info, indicators, cfg)
     with tabs[1]: render_structure_tab(df, analysis)
     with tabs[2]: render_patterns_tab(df, analysis)
     with tabs[3]: render_mtf_tab(df, analysis, cfg["symbol"], cfg["period"])
     with tabs[4]: render_trade_tab(df, analysis, cfg)
-    with tabs[5]: render_review_tab(analysis)
-
-
+    with tabs[5]: render_signal_tab(analysis)
+    with tabs[6]: render_review_tab(analysis)
+ 
+ 
 if __name__ == "__main__":
     main()
+ 
