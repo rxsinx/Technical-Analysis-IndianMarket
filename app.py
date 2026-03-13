@@ -625,7 +625,7 @@ def render_overview_tab(df, info, indicators, cfg):
 def render_structure_tab(df, analysis):
     st.markdown("""
     <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
-    letter-spacing:3px;margin-bottom:16px;">MODULE 02–03 &nbsp;|&nbsp; MARKET STRUCTURE & TREND</div>
+    letter-spacing:3px;margin-bottom:16px;">MODULE 02–05 &nbsp;|&nbsp; MARKET STRUCTURE & TREND</div>
     """, unsafe_allow_html=True)
 
     ms = analysis.get("market_structure", {})
