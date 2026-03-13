@@ -1644,7 +1644,7 @@ def main():
 
             dvb  = detect_darvas_boxes(df)
             sig  = compute_trading_signal(df, indicators)
-            fund = get_fundamentals(cfg["symbol"], df)
+            fund = get_fundamentals(cfg["symbol"], _df_price=df)
 
             st.session_state.df   = df
             st.session_state.info = info
