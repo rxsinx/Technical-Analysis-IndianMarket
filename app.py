@@ -24,6 +24,7 @@ from modules.indicators import compute_indicators
 from modules.utils import format_currency, get_color
 from modules.darvas_box import detect_darvas_boxes
 from modules.trading_signal import compute_trading_signal
+from modules.fundamental import get_fundamentals
 
 # ── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -1099,6 +1100,424 @@ def render_signal_tab(analysis: dict):
     )
     st.plotly_chart(fig_bar, use_container_width=True)
 
+
+def render_fundamental_tab(analysis: dict):
+    """Complete Financial Analysis panel — MarketSmith-style in terminal aesthetic."""
+    st.markdown("""
+    <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
+    letter-spacing:3px;margin-bottom:16px;">MODULE 18 &nbsp;|&nbsp; COMPLETE FINANCIAL ANALYSIS</div>
+    """, unsafe_allow_html=True)
+
+    fund = analysis.get("fundamentals", {})
+    if not fund or "error" in fund:
+        st.markdown(f"<div style='color:#ff3355;'>Data unavailable: {fund.get('error','')}</div>",
+                    unsafe_allow_html=True)
+        return
+
+    scores    = fund.get("scores",     {})
+    ratios    = fund.get("ratios",     {})
+    quarterly = fund.get("quarterly",  [])
+    annual    = fund.get("annual",     [])
+    fins      = fund.get("financials", {})
+    canslim   = fund.get("canslim",    [])
+    info      = fund.get("info",       {})
+
+    # ── SECTION 1: Master Score Row ──────────────────────────────────────────
+    _score_row(scores)
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+    # ── SECTION 2: Price Performance vs Key Ratios ───────────────────────────
+    col_l, col_r = st.columns([1, 1])
+    with col_l:
+        _price_performance(scores, info)
+    with col_r:
+        _valuation_ratios(ratios)
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+    # ── SECTION 3: Quarterly Earnings + Annual EPS/Price ─────────────────────
+    col_q, col_a = st.columns([3, 2])
+    with col_q:
+        _quarterly_table(quarterly)
+    with col_a:
+        _annual_table(annual)
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+    # ── SECTION 4: Financials Bar Charts ─────────────────────────────────────
+    _financials_charts(fins)
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+    # ── SECTION 5: Key Metrics Grid ──────────────────────────────────────────
+    _metrics_grid(ratios)
+    st.markdown("<div class='divider'></div>", unsafe_allow_html=True)
+
+    # ── SECTION 6: CAN SLIM Checklist ────────────────────────────────────────
+    _canslim_panel(canslim)
+
+
+# ─── helpers ─────────────────────────────────────────────────────────────────
+
+def _score_row(scores: dict):
+    """Top row: Master Score + sub-ratings."""
+    master  = scores.get("master",    0)
+    eps_r   = scores.get("eps_rating", 0)
+    rs_r    = scores.get("rs_rating",  0)
+    acc_dis = scores.get("acc_dis",    "C")
+    gr      = scores.get("group_rank", "N/A")
+
+    def score_color(v):
+        if isinstance(v, int):
+            if v >= 80: return "#00ff6a"
+            if v >= 60: return "#ffaa00"
+            return "#ff3355"
+        return "#ffaa00"
+
+    acc_color = {"A":"#00ff6a","B":"#00cc55","C":"#ffaa00","D":"#ff8844","E":"#ff3355"}.get(acc_dis,"#ffaa00")
+
+    items = [
+        ("MASTER SCORE",       str(master),  score_color(master),  "Composite rating"),
+        ("EPS RATING",         str(eps_r),   score_color(eps_r),   "Earnings power"),
+        ("PRICE STRENGTH",     str(rs_r),    score_color(rs_r),    "Relative strength"),
+        ("ACC/DIS RATING",     acc_dis,      acc_color,            "Institutional flow"),
+        ("GROUP RANK",         str(gr),      "#3a6648",            "Sector rank (proxy)"),
+        ("EPS GROWTH",         f"{scores.get('eps_growth_rate',0):+.1f}%",
+                               "#00ff6a" if scores.get('eps_growth_rate',0)>0 else "#ff3355", "TTM EPS growth"),
+    ]
+
+    cols = st.columns(len(items))
+    for col, (lbl, val, color, note) in zip(cols, items):
+        with col:
+            st.markdown(f"""
+            <div style="background:#040f08;border:1px solid #0d3318;border-top:3px solid {color};
+            padding:12px 10px;text-align:center;">
+                <div style="font-size:8px;color:#3a6648;letter-spacing:2px;margin-bottom:6px;">{lbl}</div>
+                <div style="font-family:'Orbitron',monospace;font-size:26px;font-weight:900;
+                color:{color};text-shadow:0 0 12px {color}66;">{val}</div>
+                <div style="font-size:9px;color:#3a6648;margin-top:4px;">{note}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+
+def _price_performance(scores: dict, info: dict):
+    """Price performance across timeframes."""
+    st.markdown('<div style="font-family:\'Orbitron\',monospace;font-size:10px;color:#00ffcc;letter-spacing:3px;margin-bottom:10px;">PRICE PERFORMANCE</div>', unsafe_allow_html=True)
+
+    rows = [
+        ("4-Week Return",  scores.get("ret_4w")),
+        ("13-Week Return", scores.get("ret_13w")),
+        ("26-Week Return", scores.get("ret_26w")),
+        ("52-Week Return", scores.get("ret_52w")),
+    ]
+
+    html = '<div style="font-family:\'Share Tech Mono\',monospace;">'
+    for label, val in rows:
+        if val is None:
+            continue
+        color  = "#00ff6a" if val >= 0 else "#ff3355"
+        arrow  = "▲" if val >= 0 else "▼"
+        bar_w  = min(100, abs(val) * 1.5)
+        bar_c  = "#00ff6a" if val >= 0 else "#ff3355"
+        html += f"""
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #0a1a0e;">
+            <div style="width:120px;font-size:10px;color:#3a6648;">{label}</div>
+            <div style="flex:1;background:#0d3318;height:6px;border-radius:0;">
+                <div style="width:{bar_w}%;background:{bar_c};height:100%;"></div>
+            </div>
+            <div style="width:70px;text-align:right;font-size:11px;color:{color};">
+                {arrow} {abs(val):.1f}%
+            </div>
+        </div>"""
+    html += '</div>'
+
+    # Also show 52W Hi/Lo distance
+    hi52 = info.get("fiftyTwoWeekHigh")
+    lo52 = info.get("fiftyTwoWeekLow")
+    curr = info.get("currentPrice") or info.get("regularMarketPrice")
+    if hi52 and lo52 and curr:
+        pos_pct = (curr - lo52) / (hi52 - lo52) * 100 if hi52 != lo52 else 50
+        html += f"""
+        <div style="margin-top:12px;padding:10px;background:#040f08;border:1px solid #0d3318;">
+            <div style="font-size:9px;color:#3a6648;letter-spacing:2px;margin-bottom:6px;">52W POSITION</div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:#3a6648;margin-bottom:4px;">
+                <span>LOW ₹{lo52:,.0f}</span><span>HIGH ₹{hi52:,.0f}</span>
+            </div>
+            <div style="background:#0d3318;height:8px;position:relative;">
+                <div style="width:{pos_pct:.0f}%;background:#00ff6a;height:100%;"></div>
+                <div style="position:absolute;left:{pos_pct:.0f}%;top:-4px;transform:translateX(-50%);
+                color:#00ff6a;font-size:14px;">▼</div>
+            </div>
+            <div style="text-align:center;font-size:10px;color:#00ff6a;margin-top:8px;">
+                {pos_pct:.1f}% of 52W range &nbsp;·&nbsp; CMP ₹{curr:,.2f}
+            </div>
+        </div>"""
+
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def _valuation_ratios(ratios: dict):
+    """Valuation ratios grid."""
+    st.markdown('<div style="font-family:\'Orbitron\',monospace;font-size:10px;color:#00ffcc;letter-spacing:3px;margin-bottom:10px;">VALUATION & QUALITY</div>', unsafe_allow_html=True)
+
+    items = [
+        ("Market Cap",      ratios.get("market_cap", "N/A")),
+        ("P/E (TTM)",       ratios.get("pe",         "N/A")),
+        ("P/E (Forward)",   ratios.get("fwd_pe",     "N/A")),
+        ("P/B Ratio",       ratios.get("pb",         "N/A")),
+        ("P/S Ratio",       ratios.get("ps",         "N/A")),
+        ("EV/EBITDA",       ratios.get("ev_ebitda",  "N/A")),
+        ("EPS (TTM)",       f"₹{ratios.get('eps_ttm','N/A')}"),
+        ("EPS (Fwd)",       f"₹{ratios.get('eps_fwd','N/A')}"),
+        ("Book Value",      f"₹{ratios.get('book_value','N/A')}"),
+        ("ROE",             ratios.get("roe",        "N/A")),
+        ("ROA",             ratios.get("roa",        "N/A")),
+        ("Net Margin",      ratios.get("net_margin", "N/A")),
+        ("Op Margin",       ratios.get("op_margin",  "N/A")),
+        ("Gross Margin",    ratios.get("gross_margin","N/A")),
+        ("Rev Growth",      ratios.get("rev_growth", "N/A")),
+        ("Earn Growth",     ratios.get("earn_growth","N/A")),
+    ]
+
+    html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;font-family:\'Share Tech Mono\',monospace;">'
+    for lbl, val in items:
+        color = "#a0ffc0"
+        if isinstance(val, str) and val.endswith("%"):
+            try:
+                v = float(val.replace("%",""))
+                color = "#00ff6a" if v > 0 else "#ff3355"
+            except Exception:
+                pass
+        html += f"""
+        <div style="display:flex;justify-content:space-between;align-items:center;
+        padding:4px 8px;background:#040f08;border-bottom:1px solid #0a1a0e;">
+            <span style="font-size:9px;color:#3a6648;">{lbl}</span>
+            <span style="font-size:10px;color:{color};font-weight:bold;">{val}</span>
+        </div>"""
+    html += '</div>'
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def _quarterly_table(quarterly: list):
+    """Quarterly EPS + Revenue table."""
+    st.markdown('<div style="font-family:\'Orbitron\',monospace;font-size:10px;color:#ffaa00;letter-spacing:3px;margin-bottom:10px;">QUARTERLY EARNINGS</div>', unsafe_allow_html=True)
+
+    if not quarterly:
+        st.markdown("<div style='color:#3a6648;font-size:11px;'>No quarterly data available.</div>", unsafe_allow_html=True)
+        return
+
+    hdr = '<div style="display:grid;grid-template-columns:80px 60px 55px 80px 55px;gap:2px;font-family:\'Orbitron\',monospace;font-size:8px;color:#3a6648;letter-spacing:1px;padding:4px 6px;background:#061510;margin-bottom:2px;">'
+    hdr += '<div>QUARTER</div><div style="text-align:right;">EPS (₹)</div><div style="text-align:right;">CHG%</div><div style="text-align:right;">REV (Cr)</div><div style="text-align:right;">CHG%</div></div>'
+
+    rows_html = ""
+    for i, q in enumerate(quarterly):
+        bg = "#040f08" if i % 2 == 0 else "#030b06"
+        eps_str  = f"₹{q['eps']:,.2f}"    if q['eps']    is not None else "—"
+        rev_str  = f"₹{q['rev_cr']:,.1f}" if q['rev_cr'] is not None else "—"
+
+        def chg_html(v):
+            if v is None: return '<div style="text-align:right;color:#3a6648;">—</div>'
+            c = "#00ff6a" if v >= 0 else "#ff3355"
+            arrow = "▲" if v >= 0 else "▼"
+            return f'<div style="text-align:right;color:{c};">{arrow}{abs(v):.1f}%</div>'
+
+        rows_html += f"""
+        <div style="display:grid;grid-template-columns:80px 60px 55px 80px 55px;gap:2px;
+        font-family:'Share Tech Mono',monospace;font-size:10px;color:#a0ffc0;
+        padding:5px 6px;background:{bg};border-bottom:1px solid #0a1a0e;">
+            <div style="color:#3a6648;">{q['date']}</div>
+            <div style="text-align:right;">{eps_str}</div>
+            {chg_html(q['eps_chg'])}
+            <div style="text-align:right;">{rev_str}</div>
+            {chg_html(q['rev_chg'])}
+        </div>"""
+
+    st.markdown(hdr + rows_html, unsafe_allow_html=True)
+
+
+def _annual_table(annual: list):
+    """Annual EPS with Hi/Lo price."""
+    st.markdown('<div style="font-family:\'Orbitron\',monospace;font-size:10px;color:#ffaa00;letter-spacing:3px;margin-bottom:10px;">ANNUAL EPS & PRICE</div>', unsafe_allow_html=True)
+
+    if not annual:
+        st.markdown("<div style='color:#3a6648;font-size:11px;'>No annual data available.</div>", unsafe_allow_html=True)
+        return
+
+    hdr = '<div style="display:grid;grid-template-columns:50px 70px 75px 75px;gap:2px;font-family:\'Orbitron\',monospace;font-size:8px;color:#3a6648;letter-spacing:1px;padding:4px 6px;background:#061510;margin-bottom:2px;">'
+    hdr += '<div>YEAR</div><div style="text-align:right;">EPS (₹)</div><div style="text-align:right;">HIGH</div><div style="text-align:right;">LOW</div></div>'
+
+    rows_html = ""
+    for i, a in enumerate(annual):
+        bg      = "#040f08" if i % 2 == 0 else "#030b06"
+        eps_str = f"₹{a['eps']:,.2f}" if a['eps'] is not None else "—"
+        hi_str  = f"₹{a['hi']:,.0f}"  if a['hi']  is not None else "—"
+        lo_str  = f"₹{a['lo']:,.0f}"  if a['lo']  is not None else "—"
+        rows_html += f"""
+        <div style="display:grid;grid-template-columns:50px 70px 75px 75px;gap:2px;
+        font-family:'Share Tech Mono',monospace;font-size:10px;color:#a0ffc0;
+        padding:5px 6px;background:{bg};border-bottom:1px solid #0a1a0e;">
+            <div style="color:#3a6648;">{a['year']}</div>
+            <div style="text-align:right;color:#00ff6a;">{eps_str}</div>
+            <div style="text-align:right;color:#ffaa00;">{hi_str}</div>
+            <div style="text-align:right;color:#ff3355;">{lo_str}</div>
+        </div>"""
+
+    st.markdown(hdr + rows_html, unsafe_allow_html=True)
+
+
+def _financials_charts(fins: dict):
+    """4-year bar charts: Revenue, Net Income, Operating CF, Free CF."""
+    if not fins or "error" in fins:
+        st.markdown("<div style='color:#3a6648;font-size:11px;'>Financial chart data unavailable.</div>", unsafe_allow_html=True)
+        return
+
+    years  = fins.get("years", ["Y1","Y2","Y3","Y4"])
+    rev    = fins.get("revenue",      [])
+    ni     = fins.get("net_income",   [])
+    ocf    = fins.get("op_cashflow",  [])
+    fcf    = fins.get("free_cashflow",[])
+
+    def clean(lst):
+        return [v if isinstance(v, (int, float)) else 0 for v in lst]
+
+    st.markdown('<div style="font-family:\'Orbitron\',monospace;font-size:10px;color:#00ffcc;letter-spacing:3px;margin-bottom:10px;">FINANCIAL TRENDS (₹ Cr)</div>', unsafe_allow_html=True)
+
+    c1, c2, c3, c4 = st.columns(4)
+    chart_defs = [
+        (c1, "Revenue",         rev,  "#00ff6a"),
+        (c2, "Net Income",      ni,   "#00ffcc"),
+        (c3, "Operating CF",    ocf,  "#ffaa00"),
+        (c4, "Free Cash Flow",  fcf,  "#ff3355"),
+    ]
+
+    for col, title, data, color in chart_defs:
+        with col:
+            d = clean(data)[:4]
+            yr = years[:len(d)]
+            if not any(v != 0 for v in d):
+                st.markdown(f"<div style='font-size:9px;color:#3a6648;text-align:center;padding:20px;'>{title}<br>N/A</div>", unsafe_allow_html=True)
+                continue
+            bar_colors = [color if v >= 0 else "#ff3355" for v in d]
+            fig = go.Figure(go.Bar(
+                x=yr, y=d,
+                marker_color=bar_colors,
+                text=[f"₹{v:,.0f}" for v in d],
+                textposition="outside",
+                textfont=dict(size=8, color="#a0ffc0"),
+                width=0.6,
+            ))
+            fig.update_layout(
+                title=dict(text=title, font=dict(family="Orbitron", size=9, color="#3a6648"), x=0.5),
+                paper_bgcolor="#020c06", plot_bgcolor="#040f08",
+                font=dict(family="Share Tech Mono", color="#a0ffc0", size=9),
+                height=180, margin=dict(l=0,r=0,t=28,b=0),
+                xaxis=dict(gridcolor="#0d3318", showgrid=False, tickfont=dict(size=8)),
+                yaxis=dict(gridcolor="#0d3318", showgrid=True, zeroline=True,
+                           zerolinecolor="#3a6648", tickfont=dict(size=8)),
+                showlegend=False,
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+
+def _metrics_grid(ratios: dict):
+    """Bottom grid: shareholding + debt + cashflow metrics."""
+    st.markdown('<div style="font-family:\'Orbitron\',monospace;font-size:10px;color:#00ffcc;letter-spacing:3px;margin-bottom:10px;">SHAREHOLDING & CAPITAL STRUCTURE</div>', unsafe_allow_html=True)
+
+    sections = {
+        "SHAREHOLDING": [
+            ("Promoter Holding",   ratios.get("prom_hold","N/A")),
+            ("Institutional (FII/DII)", ratios.get("inst_hold","N/A")),
+            ("Shares Outstanding", ratios.get("shares_out","N/A")),
+            ("Float Shares",       ratios.get("float_shares","N/A")),
+            ("Dividend Yield",     ratios.get("div_yield","N/A")),
+            ("Payout Ratio",       ratios.get("payout_ratio","N/A")),
+        ],
+        "BALANCE SHEET": [
+            ("Debt / Equity",      ratios.get("debt_equity","N/A")),
+            ("Current Ratio",      ratios.get("current_ratio","N/A")),
+            ("Quick Ratio",        ratios.get("quick_ratio","N/A")),
+            ("Enterprise Value",   ratios.get("ev","N/A")),
+            ("Book Value / Share", f"₹{ratios.get('book_value','N/A')}"),
+            ("Beta",               ratios.get("beta","N/A")),
+        ],
+        "CASHFLOW & MARGIN": [
+            ("Operating CF",       ratios.get("op_cashflow","N/A")),
+            ("Free Cash Flow",     ratios.get("free_cashflow","N/A")),
+            ("Gross Margin",       ratios.get("gross_margin","N/A")),
+            ("Operating Margin",   ratios.get("op_margin","N/A")),
+            ("Net Margin",         ratios.get("net_margin","N/A")),
+            ("Revenue",            ratios.get("revenue","N/A")),
+        ],
+    }
+
+    cols = st.columns(3)
+    for col, (sec_title, items) in zip(cols, sections.items()):
+        with col:
+            html = f'<div style="background:#040f08;border:1px solid #0d3318;border-top:2px solid #007733;padding:10px;">'
+            html += f'<div style="font-family:\'Orbitron\',monospace;font-size:9px;color:#00ff6a;letter-spacing:2px;margin-bottom:8px;">{sec_title}</div>'
+            for lbl, val in items:
+                color = "#a0ffc0"
+                if isinstance(val, str) and val.endswith("%"):
+                    try:
+                        v = float(val.replace("%",""))
+                        color = "#00ff6a" if v > 15 else ("#ffaa00" if v > 5 else "#a0ffc0")
+                    except Exception: pass
+                html += f"""
+                <div style="display:flex;justify-content:space-between;
+                padding:4px 0;border-bottom:1px solid #0a1a0e;font-family:'Share Tech Mono',monospace;">
+                    <span style="font-size:9px;color:#3a6648;">{lbl}</span>
+                    <span style="font-size:10px;color:{color};">{val}</span>
+                </div>"""
+            html += '</div>'
+            st.markdown(html, unsafe_allow_html=True)
+
+
+def _canslim_panel(canslim: list):
+    """CAN SLIM checklist."""
+    st.markdown('<div style="font-family:\'Orbitron\',monospace;font-size:10px;color:#ffaa00;letter-spacing:3px;margin-bottom:10px;">CAN SLIM CHECKLIST</div>', unsafe_allow_html=True)
+
+    pass_count = sum(1 for c in canslim if c.get("pass") is True)
+    fail_count = sum(1 for c in canslim if c.get("pass") is False)
+    total      = len([c for c in canslim if c.get("pass") is not None])
+
+    score_pct = pass_count / total * 100 if total > 0 else 0
+    score_color = "#00ff6a" if score_pct >= 70 else ("#ffaa00" if score_pct >= 40 else "#ff3355")
+
+    st.markdown(f"""
+    <div style="display:flex;align-items:center;gap:16px;padding:10px 14px;
+    background:#040f08;border:1px solid #0d3318;margin-bottom:10px;">
+        <div style="font-family:'Orbitron',monospace;font-size:22px;font-weight:900;
+        color:{score_color};">{pass_count}/{total}</div>
+        <div>
+            <div style="font-size:9px;color:#3a6648;letter-spacing:2px;">CHECKS PASSED</div>
+            <div style="font-size:10px;color:{score_color};">{score_pct:.0f}% — {'STRONG' if score_pct>=70 else ('MODERATE' if score_pct>=40 else 'WEAK')}</div>
+        </div>
+        <div style="flex:1;background:#0d3318;height:6px;margin-left:16px;">
+            <div style="width:{score_pct:.0f}%;background:{score_color};height:100%;"></div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    cols = st.columns(2)
+    for i, item in enumerate(canslim):
+        with cols[i % 2]:
+            p = item.get("pass")
+            if p is True:
+                icon, color, bg = "✓", "#00ff6a", "#001a0a"
+            elif p is False:
+                icon, color, bg = "✗", "#ff3355", "#1a0008"
+            else:
+                icon, color, bg = "◎", "#ffaa00", "#1a1000"
+            st.markdown(f"""
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:7px 10px;
+            background:{bg};border-left:3px solid {color};margin-bottom:3px;
+            font-family:'Share Tech Mono',monospace;">
+                <span style="color:{color};font-size:14px;min-width:16px;margin-top:1px;">{icon}</span>
+                <div>
+                    <div style="font-size:10px;color:#a0ffc0;">{item['label']}</div>
+                    <div style="font-size:11px;color:{color};font-weight:bold;">{item['value']}</div>
+                    <div style="font-size:9px;color:#3a6648;">{item.get('note','')}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
 def render_review_tab(analysis):
     st.markdown("""
     <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
@@ -1223,8 +1642,9 @@ def main():
                 "overall": bias.upper() if bias != "N/A" else "NEUTRAL",
             }
 
-            dvb = detect_darvas_boxes(df)
-            sig = compute_trading_signal(df, indicators)
+            dvb  = detect_darvas_boxes(df)
+            sig  = compute_trading_signal(df, indicators)
+            fund = get_fundamentals(cfg["symbol"], df)
 
             st.session_state.df   = df
             st.session_state.info = info
@@ -1242,6 +1662,7 @@ def main():
                 "traps":            traps,
                 "final_result":     final,
                 "trading_signal":   sig,
+                "fundamentals":     fund,
             }
             st.session_state.indicators = indicators
 
@@ -1269,6 +1690,7 @@ def main():
         "🔭  MULTI-TF",
         "⚡  TRADE PLAN",
         "📡  SIGNAL",
+        "🏦  FUNDAMENTALS",
         "📋  REVIEW",
     ])
 
@@ -1278,7 +1700,8 @@ def main():
     with tabs[3]: render_mtf_tab(df, analysis, cfg["symbol"], cfg["period"])
     with tabs[4]: render_trade_tab(df, analysis, cfg)
     with tabs[5]: render_signal_tab(analysis)
-    with tabs[6]: render_review_tab(analysis)
+    with tabs[6]: render_fundamental_tab(analysis)
+    with tabs[7]: render_review_tab(analysis)
 
 
 if __name__ == "__main__":
