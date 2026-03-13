@@ -2,12 +2,18 @@
 Fundamental Analysis Module
 Fetches and computes MarketSmith-style metrics using yfinance.
 """
+import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
 
 
-def get_fundamentals(symbol: str, df_price: pd.DataFrame) -> dict:
+@st.cache_data(ttl=600)
+def get_fundamentals(symbol: str, _df_price: pd.DataFrame) -> dict:
+    return _get_fundamentals_impl(symbol, _df_price)
+
+
+def _get_fundamentals_impl(symbol: str, df_price: pd.DataFrame) -> dict:
     """
     Fetch comprehensive fundamental data for a symbol.
     Returns a dict with all sections needed for the Fundamentals panel.
@@ -289,7 +295,14 @@ def _financial_summary(ticker, info: dict) -> dict:
             ann = ticker.financials
 
         bs  = ticker.balance_sheet
-        cf  = ticker.cashflow
+        # cash_flow is the current yfinance attribute; cashflow is deprecated
+        try:
+            cf = ticker.cash_flow
+        except Exception:
+            try:
+                cf = ticker.cashflow
+            except Exception:
+                cf = None
 
         def get_row(df, keys):
             if df is None or df.empty:
