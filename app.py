@@ -353,7 +353,7 @@ def render_sidebar():
 
     # Symbol input
     st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;'>SYMBOL</div>", unsafe_allow_html=True)
-    symbol = st.sidebar.text_input("", value="RELIANCE.NS", key="symbol_input", label_visibility="collapsed").upper().strip()
+    symbol = st.sidebar.text_input("", value="XXX", key="symbol_input", label_visibility="collapsed").upper().strip()
 
     # Timeframe
     st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>PRIMARY TIMEFRAME</div>", unsafe_allow_html=True)
@@ -958,7 +958,7 @@ def render_signal_tab(analysis: dict):
     """Trading Signal & Analysis panel."""
     st.markdown("""
     <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
-    letter-spacing:3px;margin-bottom:16px;">MODULE 17 &nbsp;|&nbsp; TRADING SIGNAL & ANALYSIS</div>
+    letter-spacing:3px;margin-bottom:16px;">MODULE 14 &nbsp;|&nbsp; TRADING SIGNAL & ANALYSIS</div>
     """, unsafe_allow_html=True)
 
     sig = analysis.get("trading_signal", {})
@@ -1105,7 +1105,7 @@ def render_fundamental_tab(analysis: dict):
     """Complete Financial Analysis panel — MarketSmith-style in terminal aesthetic."""
     st.markdown("""
     <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
-    letter-spacing:3px;margin-bottom:16px;">MODULE 18 &nbsp;|&nbsp; COMPLETE FINANCIAL ANALYSIS</div>
+    letter-spacing:3px;margin-bottom:16px;">MODULE 15 &nbsp;|&nbsp; COMPLETE FINANCIAL ANALYSIS</div>
     """, unsafe_allow_html=True)
 
     fund = analysis.get("fundamentals", {})
@@ -1521,7 +1521,7 @@ def _canslim_panel(canslim: list):
 def render_review_tab(analysis):
     st.markdown("""
     <div style="font-family:'Orbitron',monospace;font-size:13px;color:#00ff6a;
-    letter-spacing:3px;margin-bottom:16px;">MODULE 14–16 &nbsp;|&nbsp; REVIEW & FINAL RESULT</div>
+    letter-spacing:3px;margin-bottom:16px;">MODULE 16 &nbsp;|&nbsp; REVIEW & FINAL RESULT</div>
     """, unsafe_allow_html=True)
 
     c1, c2 = st.columns(2)
