@@ -26,8 +26,8 @@ def analyze_trend(df: pd.DataFrame, indicators: dict) -> dict:
     else:
         daily = "SIDEWAYS"
 
-    # Weekly trend via 10-bar EMA proxy
-    weekly_close = close.resample("W").last().dropna() if hasattr(close.index, "freq") else close
+    # Weekly trend: use 5-day rolling close as weekly proxy (no resample freq needed)
+    weekly_close = close.rolling(5).mean().dropna()
     w_ema20 = weekly_close.ewm(span=20, adjust=False).mean()
     weekly = "UPTREND" if weekly_close.iloc[-1] > w_ema20.iloc[-1] else "DOWNTREND"
 
