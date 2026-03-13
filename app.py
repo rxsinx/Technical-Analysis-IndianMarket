@@ -24,7 +24,7 @@ from modules.indicators import compute_indicators
 from modules.utils import format_currency, get_color
 from modules.darvas_box import detect_darvas_boxes
 from modules.trading_signal import compute_trading_signal
-from modules.fundamental import get_fundamentals
+from modules.fundamentals import get_fundamentals
 
 # ── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
