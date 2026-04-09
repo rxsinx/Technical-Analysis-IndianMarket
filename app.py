@@ -25,6 +25,7 @@ from modules.utils import format_currency, get_color
 from modules.darvas_box import detect_darvas_boxes
 from modules.trading_signal import compute_trading_signal
 from modules.fundamentals import get_fundamentals
+from modules.crossover_tab import render_crossover_tab
 
 # ── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -1692,6 +1693,7 @@ def main():
         "📡  SIGNAL",
         "🏦  FUNDAMENTALS",
         "📋  REVIEW",
+        "⚡  CROSSOVER MATRIX",
     ])
 
     with tabs[0]: render_overview_tab(df, info, indicators, cfg)
@@ -1702,7 +1704,7 @@ def main():
     with tabs[5]: render_signal_tab(analysis)
     with tabs[6]: render_fundamental_tab(analysis)
     with tabs[7]: render_review_tab(analysis)
-
+    with tabs[8]: render_crossover_tab(df)   
 
 if __name__ == "__main__":
     main()
