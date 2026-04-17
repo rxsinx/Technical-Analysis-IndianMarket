@@ -112,7 +112,7 @@ def _confluence_card(conf: dict) -> None:
     cross = conf.get("live_cross")
 
     rows = "".join([
-        _row("RSI(14)",        rsi,  rsi  is not None and 45 <= rsi <= 65),
+        _row("RSI(14)",        rsi,  rsi  is not None and 35 <= rsi <= 75),
         _row("MACD Histogram", macd, macd is not None and macd > 0),
         _row("ATR %",          atr,  atr  is not None and atr < 3.0,  "%"),
         _row("Volume Ratio",   vol,  vol  is not None and vol >= 1.0,  "×"),
@@ -495,7 +495,7 @@ def _suggestions_panel(suggestions: list[str]) -> None:
             <tbody>
                 <tr style="border-bottom:1px solid {_BORDER};">
                     <td style="padding:7px 12px;color:{_BLUE};font-weight:600;">RSI(14)</td>
-                    <td style="padding:7px 12px;color:{_TEXT};">45 – 65</td>
+                    <td style="padding:7px 12px;color:{_TEXT};">35 – 75</td>
                     <td style="padding:7px 12px;color:{_DIM};">Overbought entries + oversold dead bounces</td>
                     <td style="padding:7px 12px;color:{_GREEN};font-weight:600;">50–60, rising</td>
                 </tr>
