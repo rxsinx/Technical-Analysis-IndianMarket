@@ -372,8 +372,8 @@ def render_sidebar():
     analyze = st.sidebar.button("▶  RUN ANALYSIS", use_container_width=True)
     
     # Capital
-    # st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>CAPITAL (₹)</div>", unsafe_allow_html=True)
-    # capital = st.sidebar.number_input("", value=100000, step=10000, key="capital", label_visibility="collapsed")
+    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>CAPITAL (₹)</div>", unsafe_allow_html=True)
+    capital = st.sidebar.number_input("", value=100000, step=10000, key="capital", label_visibility="collapsed")
  
     # Indicators
     st.sidebar.markdown("<hr style='border:none;border-top:1px solid #0d3318;margin:16px 0;'>", unsafe_allow_html=True)
