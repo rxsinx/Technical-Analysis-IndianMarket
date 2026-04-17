@@ -366,10 +366,14 @@ def render_sidebar():
     # Risk %
     st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>RISK PER TRADE (%)</div>", unsafe_allow_html=True)
     risk_pct = st.sidebar.slider("", 0.5, 5.0, 1.0, 0.5, key="risk_pct", label_visibility="collapsed")
- 
+
+    # RUN ANALYSIS    
+    st.sidebar.markdown("<hr style='border:none;border-top:1px solid #0d3318;margin:16px 0;'>", unsafe_allow_html=True)
+    analyze = st.sidebar.button("▶  RUN ANALYSIS", use_container_width=True)
+    
     # Capital
-    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>CAPITAL (₹)</div>", unsafe_allow_html=True)
-    capital = st.sidebar.number_input("", value=100000, step=10000, key="capital", label_visibility="collapsed")
+    # st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>CAPITAL (₹)</div>", unsafe_allow_html=True)
+    # capital = st.sidebar.number_input("", value=100000, step=10000, key="capital", label_visibility="collapsed")
  
     # Indicators
     st.sidebar.markdown("<hr style='border:none;border-top:1px solid #0d3318;margin:16px 0;'>", unsafe_allow_html=True)
@@ -380,8 +384,7 @@ def render_sidebar():
     show_sr  = st.sidebar.checkbox("Support / Resistance", value=True)
     show_dz  = st.sidebar.checkbox("Demand / Supply Zones", value=True)
  
-    st.sidebar.markdown("<hr style='border:none;border-top:1px solid #0d3318;margin:16px 0;'>", unsafe_allow_html=True)
-    analyze = st.sidebar.button("▶  RUN ANALYSIS", use_container_width=True)
+    
  
     return {
         "symbol": symbol,
