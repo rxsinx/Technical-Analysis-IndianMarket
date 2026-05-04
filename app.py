@@ -322,8 +322,8 @@ def render_header():
     col1, col2, col3 = st.columns([3, 1, 1])
     with col1:
         st.markdown("""
-        <div class="module-header">TA // TERMINAL</div>
-        <div class="module-sub">TECHNICAL ANALYSIS SYSTEM v2.4 &nbsp;|&nbsp; INDIAN EQUITY &nbsp;|&nbsp; 16 MODULES LOADED</div>
+        <div class="module-header">TECHNICAL ANALYSIS TERMINAL</div>
+        <div class="module-sub">INDIAN EQUITY &nbsp;|&nbsp; 16 MODULES LOADED</div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown(f"""
