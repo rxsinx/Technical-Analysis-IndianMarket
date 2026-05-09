@@ -424,7 +424,15 @@ def render_sidebar():
  
  
 # ── DATA FETCH ────────────────────────────────────────────────────────────────
- 
+def format_symbol(symbol, provider="kite"):
+    # Remove .NS if it exists
+    base_symbol = symbol.replace(".NS", "").upper()
+    
+    if provider == "yfinance":
+        return f"{base_symbol}.NS"
+    return base_symbol # Kite version
+
+
 @st.cache_data(ttl=300)
 def fetch_data(symbol: str, timeframe: str, period: str) -> pd.DataFrame:
     return fetch_ohlcv_kite(symbol, timeframe=timeframe, period=period)
@@ -1605,6 +1613,7 @@ def main():
     # Ensure you have a line like this BEFORE line 1617
     interval = st.sidebar.selectbox("Select Interval", ["5minute", "15minute", "60minute", "day"]) 
     
+    
     # Initial state
     if "analysis" not in st.session_state:
         st.session_state.analysis = None
@@ -1618,6 +1627,10 @@ def main():
         with st.spinner("LOADING DATA..."):
             df = fetch_data(cfg["symbol"], interval, cfg["period"])
             info = fetch_info(cfg["symbol"])
+
+            # When calling Kite
+            kite_symbol = format_symbol(cfg["symbol"], provider="kite")
+            df = fetch_data(kite_symbol, cfg["interval"], cfg["period"])
  
             if df.empty:
                 st.error(f"⚠ No data found for symbol: {cfg['symbol']}")
@@ -1634,7 +1647,7 @@ def main():
             vol  = analyze_volume(df)
             chp  = detect_chart_patterns(df)
             mtf_dfs = fetch_multi_tf_kite(cfg["symbol"], cfg["period"])
-            mtf  = multi_timeframe_analysis(cfg["symbol"], cfg["period"], preloaded_dfs=mtf_dfs if mtf_dfs else None)
+            mtf  = multi_timeframe_analysis(cfg["symbol"], cfg["5minute", "15minute"], preloaded_dfs=mtf_dfs if mtf_dfs else None)
             tp   = generate_trade_plan(df, ms, sr, tr)
             rm   = calculate_risk(df, tp, cfg["capital"], cfg["risk_pct"])
  
