@@ -1,4 +1,5 @@
 import streamlit as st
+import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -6,13 +7,6 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 from datetime import datetime, timedelta
 import warnings
-from kite_data import (
-    fetch_ohlcv_kite,
-    fetch_combined_info,
-    fetch_multi_tf_kite,
-    is_kite_connected,
-    get_data_source_label,
-)
 warnings.filterwarnings('ignore')
 
 from modules.market_structure import analyze_market_structure
@@ -327,15 +321,9 @@ td { color: #24292f !important; border-bottom: 1px solid #eaecef !important;
 def render_header():
     col1, col2, col3 = st.columns([3, 1, 1])
     with col1:
-        src   = get_data_source_label()
-        color = "#1a7f37" if src == "KITE LIVE" else "#9a6700"
-        st.markdown(f"""
-        <div class="module-header"> TERMINAL
-          <span style="font-size:10px;background:{color};color:#fff;
-          padding:2px 8px;border-radius:3px;margin-left:10px;">● {src}</span>
-        </div>
-        <div class="module-sub">TECHNICAL ANALYSIS SYSTEM &nbsp;|&nbsp;
-        KITE OHLCV + YFINANCE FUNDAMENTALS &nbsp;|&nbsp; 16 MODULES</div>
+        st.markdown("""
+        <div class="module-header">TECHNICAL ANALYSIS TERMINAL</div>
+        <div class="module-sub">INDIAN EQUITY &nbsp;|&nbsp; 16 MODULES LOADED</div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown(f"""
@@ -362,56 +350,45 @@ def render_sidebar():
     ⬡ CONTROL PANEL
     </div>
     """, unsafe_allow_html=True)
-    
-    # --- KITE STEP 1: KEY & SECRET ---
-    with st.sidebar.expander("🔐 1. Kite Credentials", expanded=not is_kite_connected()):
-        api_key = st.text_input("API Key", type="password")
-        api_secret = st.text_input("API Secret", type="password")
-        
-        if api_key:
-            login_url = f"https://kite.zerodha.com/connect/login?v=3&api_key={api_key}"
-            st.sidebar.link_button("🔗 Get Request Token", login_url)
-
-    # --- KITE STEP 2: MANUAL TOKEN ENTRY ---
-    with st.sidebar.expander("🔑 2. Establish Connection", expanded=not is_kite_connected()):
-        request_token = st.text_input("Enter Generated Token", type="password")
-        if st.button("Establish Connection") and request_token:
-            from kite_data import generate_session
-            if generate_session(api_key, api_secret, request_token):
-                st.sidebar.success("Connection Established!")
-                st.rerun()
-
+ 
     # Symbol input
-    symbol = st.sidebar.text_input("SYMBOL", value="RELIANCE").upper().strip()
+    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;'>SYMBOL</div>", unsafe_allow_html=True)
+    symbol = st.sidebar.text_input("", value="RELIANCE.NS", key="symbol_input", label_visibility="collapsed").upper().strip()
+ 
+    # Timeframe
+    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>PRIMARY TIMEFRAME</div>", unsafe_allow_html=True)
+    timeframe = st.sidebar.selectbox("", ["Daily", "Weekly", "Monthly", "4H", "1H"], key="tf", label_visibility="collapsed")
+ 
+    # Period
+    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>LOOKBACK PERIOD</div>", unsafe_allow_html=True)
+    period = st.sidebar.selectbox("", ["6mo", "1y", "2y", "5y", "max"], index=1, key="period", label_visibility="collapsed")
+ 
+    # Risk %
+    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>RISK PER TRADE (%)</div>", unsafe_allow_html=True)
+    risk_pct = st.sidebar.slider("", 0.5, 5.0, 1.0, 0.5, key="risk_pct", label_visibility="collapsed")
 
-    if is_kite_connected():
-        st.sidebar.success("✓ Kite API Active")
-    else:
-        st.sidebar.warning("⚠ Kite not connected")
+    # RUN ANALYSIS    
+    st.sidebar.markdown("<hr style='border:none;border-top:1px solid #0d3318;margin:16px 0;'>", unsafe_allow_html=True)
+    analyze = st.sidebar.button("▶  RUN ANALYSIS", use_container_width=True)
     
-    # Timeframe & Interval
-    st.sidebar.markdown("---")
-    timeframe = st.sidebar.selectbox("PRIMARY TIMEFRAME", ["Daily", "Weekly", "Monthly"])
-    # We name this key 'interval' to match what your main() function expects
-    interval = st.sidebar.selectbox("FETCH INTERVAL", ["day", "60minute", "15minute", "5minute"])
-    period = st.sidebar.selectbox("LOOKBACK", ["6mo", "1y", "2y", "5y", "max"], index=1)
-    
-    # Risk Management (Fixed duplicate sliders in your original file)
-    risk_pct = st.sidebar.slider("RISK PER TRADE (%)", 0.5, 5.0, 1.0)
-    capital = st.sidebar.number_input("CAPITAL (₹)", value=100000, step=10000)
-    analyze = st.sidebar.button("▶ RUN ANALYSIS", use_container_width=True)
-    
-    # Checkboxes
+    # Capital
+    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>CAPITAL (₹)</div>", unsafe_allow_html=True)
+    capital = st.sidebar.number_input("", value=100000, step=10000, key="capital", label_visibility="collapsed")
+ 
+    # Indicators
+    st.sidebar.markdown("<hr style='border:none;border-top:1px solid #0d3318;margin:16px 0;'>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;'>OVERLAYS</div>", unsafe_allow_html=True)
     show_ema = st.sidebar.checkbox("EMA (20/50/200)", value=True)
     show_bb  = st.sidebar.checkbox("Bollinger Bands", value=True)
     show_vwap= st.sidebar.checkbox("VWAP", value=False)
     show_sr  = st.sidebar.checkbox("Support / Resistance", value=True)
     show_dz  = st.sidebar.checkbox("Demand / Supply Zones", value=True)
-
+ 
+    
+ 
     return {
         "symbol": symbol,
         "timeframe": timeframe,
-        "interval": interval,  # FIXED: This prevents the KeyError
         "period": period,
         "risk_pct": risk_pct,
         "capital": capital,
@@ -421,27 +398,30 @@ def render_sidebar():
         "show_sr": show_sr,
         "show_dz": show_dz,
         "analyze": analyze,
-        "api_key": api_key
     }
  
  
 # ── DATA FETCH ────────────────────────────────────────────────────────────────
-def format_symbol(symbol, provider="kite"):
-    # Remove .NS if it exists
-    base_symbol = symbol.replace(".NS", "").upper()
-    
-    if provider == "yfinance":
-        return f"{base_symbol}.NS"
-    return base_symbol # Kite version
-
-
+TF_MAP = {"Daily": "1d", "Weekly": "1wk", "Monthly": "1mo", "4H": "1h", "1H": "1h"}
+ 
 @st.cache_data(ttl=300)
-def fetch_data(symbol: str, timeframe: str, period: str) -> pd.DataFrame:
-    return fetch_ohlcv_kite(symbol, timeframe=timeframe, period=period)
+def fetch_data(symbol: str, interval: str, period: str) -> pd.DataFrame:
+    ticker = yf.Ticker(symbol)
+    df = ticker.history(period=period, interval=interval, auto_adjust=True)
+    if df.empty:
+        return pd.DataFrame()
+    df.index = pd.to_datetime(df.index)
+    df = df[["Open", "High", "Low", "Close", "Volume"]].dropna()
+    return df
  
 @st.cache_data(ttl=300)
 def fetch_info(symbol: str) -> dict:
-    return fetch_combined_info(symbol)
+    try:
+        t = yf.Ticker(symbol)
+        info = t.info
+        return info
+    except:
+        return {}
  
  
 # ── MAIN CHART ────────────────────────────────────────────────────────────────
@@ -1612,23 +1592,7 @@ def render_review_tab(analysis):
 def main():
     render_header()
     cfg = render_sidebar()
-    # Ensure you have a line like this BEFORE line 1617
-    interval = st.sidebar.selectbox("Select Interval", ["5minute", "15minute", "60minute", "day"]) 
-    
-    # Catch the request_token from the URL after Zerodha login
-    query_params = st.query_params
-    if "request_token" in query_params:
-        request_token = query_params["request_token"]
-
-        # Call your kite_data function to exchange request_token for access_token
-        # Ensure you have a function in kite_data.py to handle this
-        from kite_data import generate_session
-        success = generate_session(cfg["api_key"], cfg["api_secret"], request_token)
-        
-        if success:
-            st.success("Authenticated successfully! Refreshing...")
-            st.rerun()
-    
+ 
     # Initial state
     if "analysis" not in st.session_state:
         st.session_state.analysis = None
@@ -1640,12 +1604,9 @@ def main():
     # Auto-load on first run
     if st.session_state.df is None or cfg["analyze"]:
         with st.spinner("LOADING DATA..."):
+            interval = TF_MAP.get(cfg["timeframe"], "1d")
             df = fetch_data(cfg["symbol"], interval, cfg["period"])
             info = fetch_info(cfg["symbol"])
-
-            # When calling Kite
-            kite_symbol = format_symbol(cfg["symbol"], provider="kite")
-            df = fetch_data(kite_symbol, cfg["interval"], cfg["period"])
  
             if df.empty:
                 st.error(f"⚠ No data found for symbol: {cfg['symbol']}")
@@ -1661,8 +1622,7 @@ def main():
             bk   = detect_breakouts(df, sr)
             vol  = analyze_volume(df)
             chp  = detect_chart_patterns(df)
-            mtf_dfs = fetch_multi_tf_kite(cfg["symbol"], cfg["period"])
-            mtf  = multi_timeframe_analysis(cfg["symbol"], ["5minute", "15minute"], preloaded_dfs=mtf_dfs if mtf_dfs else None)
+            mtf  = multi_timeframe_analysis(cfg["symbol"], cfg["period"])
             tp   = generate_trade_plan(df, ms, sr, tr)
             rm   = calculate_risk(df, tp, cfg["capital"], cfg["risk_pct"])
  
@@ -1751,3 +1711,4 @@ def main():
  
 if __name__ == "__main__":
     main()
+ 
