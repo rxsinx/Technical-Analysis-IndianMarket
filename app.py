@@ -1613,6 +1613,19 @@ def main():
     # Ensure you have a line like this BEFORE line 1617
     interval = st.sidebar.selectbox("Select Interval", ["5minute", "15minute", "60minute", "day"]) 
     
+    # Catch the request_token from the URL after Zerodha login
+    query_params = st.query_params
+    if "request_token" in query_params:
+        request_token = query_params["request_token"]
+
+        # Call your kite_data function to exchange request_token for access_token
+        # Ensure you have a function in kite_data.py to handle this
+        from kite_data import generate_session
+        success = generate_session(cfg["api_key"], cfg["api_secret"], request_token)
+        
+        if success:
+            st.success("Authenticated successfully! Refreshing...")
+            st.rerun()
     
     # Initial state
     if "analysis" not in st.session_state:
