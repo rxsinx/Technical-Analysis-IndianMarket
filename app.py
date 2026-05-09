@@ -363,16 +363,23 @@ def render_sidebar():
     </div>
     """, unsafe_allow_html=True)
     
-    # --- KITE CREDENTIALS ---
-    with st.sidebar.expander("🔐 Kite API Setup", expanded=not is_kite_connected()):
+    # --- KITE STEP 1: KEY & SECRET ---
+    with st.sidebar.expander("🔐 1. Kite Credentials", expanded=not is_kite_connected()):
         api_key = st.text_input("API Key", type="password")
         api_secret = st.text_input("API Secret", type="password")
-    
-        if api_key and api_secret:
-            # Generate the Login URL (Redirects back to your Streamlit URL)
-            # Make sure your Redirect URL in Kite Dashboard is set to your app URL
+        
+        if api_key:
             login_url = f"https://kite.zerodha.com/connect/login?v=3&api_key={api_key}"
-            st.link_button("Login to Zerodha", login_url, use_container_width=True)
+            st.sidebar.link_button("🔗 Get Request Token", login_url)
+
+    # --- KITE STEP 2: MANUAL TOKEN ENTRY ---
+    with st.sidebar.expander("🔑 2. Establish Connection", expanded=not is_kite_connected()):
+        request_token = st.text_input("Enter Generated Token", type="password")
+        if st.button("Establish Connection") and request_token:
+            from kite_data import generate_session
+            if generate_session(api_key, api_secret, request_token):
+                st.sidebar.success("Connection Established!")
+                st.rerun()
 
     # Symbol input
     symbol = st.sidebar.text_input("SYMBOL", value="RELIANCE").upper().strip()
@@ -385,20 +392,16 @@ def render_sidebar():
     # Timeframe & Interval
     st.sidebar.markdown("---")
     timeframe = st.sidebar.selectbox("PRIMARY TIMEFRAME", ["Daily", "Weekly", "Monthly"])
+    # We name this key 'interval' to match what your main() function expects
     interval = st.sidebar.selectbox("FETCH INTERVAL", ["day", "60minute", "15minute", "5minute"])
     period = st.sidebar.selectbox("LOOKBACK", ["6mo", "1y", "2y", "5y", "max"], index=1)
     
-    # Risk %
-    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>RISK PER TRADE (%)</div>", unsafe_allow_html=True)
-    risk_pct = st.sidebar.slider("", 0.5, 5.0, 1.0, 0.5, key="risk_pct", label_visibility="collapsed")
-
-    # Risk Management
+    # Risk Management (Fixed duplicate sliders in your original file)
     risk_pct = st.sidebar.slider("RISK PER TRADE (%)", 0.5, 5.0, 1.0)
     capital = st.sidebar.number_input("CAPITAL (₹)", value=100000, step=10000)
-
     analyze = st.sidebar.button("▶ RUN ANALYSIS", use_container_width=True)
-
-    # Checkboxes for overlays
+    
+    # Checkboxes
     show_ema = st.sidebar.checkbox("EMA (20/50/200)", value=True)
     show_bb  = st.sidebar.checkbox("Bollinger Bands", value=True)
     show_vwap= st.sidebar.checkbox("VWAP", value=False)
@@ -408,7 +411,7 @@ def render_sidebar():
     return {
         "symbol": symbol,
         "timeframe": timeframe,
-        "interval": interval,  # Now fixed: included in the return dict
+        "interval": interval,  # FIXED: This prevents the KeyError
         "period": period,
         "risk_pct": risk_pct,
         "capital": capital,
@@ -418,8 +421,7 @@ def render_sidebar():
         "show_sr": show_sr,
         "show_dz": show_dz,
         "analyze": analyze,
-        "api_key": api_key,
-        "api_secret": api_secret
+        "api_key": api_key
     }
  
  
