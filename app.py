@@ -1602,7 +1602,9 @@ def render_review_tab(analysis):
 def main():
     render_header()
     cfg = render_sidebar()
- 
+    # Ensure you have a line like this BEFORE line 1617
+    # interval = st.sidebar.selectbox("Select Interval", ["5minute", "15minute", "60minute", "day"]) 
+    
     # Initial state
     if "analysis" not in st.session_state:
         st.session_state.analysis = None
