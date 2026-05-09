@@ -362,55 +362,53 @@ def render_sidebar():
     ⬡ CONTROL PANEL
     </div>
     """, unsafe_allow_html=True)
- 
-    # Symbol input
-    symbol = st.sidebar.text_input("", value="RELIANCE", key="symbol_input",label_visibility="collapsed").upper().strip()
     
+    # --- KITE CREDENTIALS ---
+    with st.sidebar.expander("🔐 Kite API Setup", expanded=not is_kite_connected()):
+        api_key = st.text_input("API Key", type="password")
+        api_secret = st.text_input("API Secret", type="password")
+    
+        if api_key and api_secret:
+            # Generate the Login URL (Redirects back to your Streamlit URL)
+            # Make sure your Redirect URL in Kite Dashboard is set to your app URL
+            login_url = f"https://kite.zerodha.com/connect/login?v=3&api_key={api_key}"
+            st.link_button("Login to Zerodha", login_url, use_container_width=True)
+
+    # Symbol input
+    symbol = st.sidebar.text_input("SYMBOL", value="RELIANCE").upper().strip()
+
     if is_kite_connected():
-        st.sidebar.markdown("""<div style="background:#dafbe1;border:1px solid
-        #1a7f37;border-radius:4px;padding:5px 10px;font-size:10px;color:#1a7f37;
-        margin-top:4px;">✓ Kite API — Live Data Active</div>""",
-        unsafe_allow_html=True)
+        st.sidebar.success("✓ Kite API Active")
     else:
-        st.sidebar.markdown("""<div style="background:#fff8c5;border:1px solid
-        #9a6700;border-radius:4px;padding:5px 10px;font-size:10px;color:#9a6700;
-        margin-top:4px;">⚠ Kite not connected — using yfinance</div>""",
-        unsafe_allow_html=True)
- 
-    # Timeframe
-    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>PRIMARY TIMEFRAME</div>", unsafe_allow_html=True)
-    timeframe = st.sidebar.selectbox("", ["Daily", "Weekly", "Monthly", "4H", "1H"], key="tf", label_visibility="collapsed")
- 
-    # Period
-    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>LOOKBACK PERIOD</div>", unsafe_allow_html=True)
-    period = st.sidebar.selectbox("", ["6mo", "1y", "2y", "5y", "max"], index=1, key="period", label_visibility="collapsed")
- 
+        st.sidebar.warning("⚠ Kite not connected")
+    
+    # Timeframe & Interval
+    st.sidebar.markdown("---")
+    timeframe = st.sidebar.selectbox("PRIMARY TIMEFRAME", ["Daily", "Weekly", "Monthly"])
+    interval = st.sidebar.selectbox("FETCH INTERVAL", ["day", "60minute", "15minute", "5minute"])
+    period = st.sidebar.selectbox("LOOKBACK", ["6mo", "1y", "2y", "5y", "max"], index=1)
+    
     # Risk %
     st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>RISK PER TRADE (%)</div>", unsafe_allow_html=True)
     risk_pct = st.sidebar.slider("", 0.5, 5.0, 1.0, 0.5, key="risk_pct", label_visibility="collapsed")
 
-    # RUN ANALYSIS    
-    st.sidebar.markdown("<hr style='border:none;border-top:1px solid #0d3318;margin:16px 0;'>", unsafe_allow_html=True)
-    analyze = st.sidebar.button("▶  RUN ANALYSIS", use_container_width=True)
-    
-    # Capital
-    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>CAPITAL (₹)</div>", unsafe_allow_html=True)
-    capital = st.sidebar.number_input("", value=100000, step=10000, key="capital", label_visibility="collapsed")
- 
-    # Indicators
-    st.sidebar.markdown("<hr style='border:none;border-top:1px solid #0d3318;margin:16px 0;'>", unsafe_allow_html=True)
-    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;'>OVERLAYS</div>", unsafe_allow_html=True)
+    # Risk Management
+    risk_pct = st.sidebar.slider("RISK PER TRADE (%)", 0.5, 5.0, 1.0)
+    capital = st.sidebar.number_input("CAPITAL (₹)", value=100000, step=10000)
+
+    analyze = st.sidebar.button("▶ RUN ANALYSIS", use_container_width=True)
+
+    # Checkboxes for overlays
     show_ema = st.sidebar.checkbox("EMA (20/50/200)", value=True)
     show_bb  = st.sidebar.checkbox("Bollinger Bands", value=True)
     show_vwap= st.sidebar.checkbox("VWAP", value=False)
     show_sr  = st.sidebar.checkbox("Support / Resistance", value=True)
     show_dz  = st.sidebar.checkbox("Demand / Supply Zones", value=True)
- 
-    
- 
+
     return {
         "symbol": symbol,
         "timeframe": timeframe,
+        "interval": interval,  # Now fixed: included in the return dict
         "period": period,
         "risk_pct": risk_pct,
         "capital": capital,
@@ -420,6 +418,8 @@ def render_sidebar():
         "show_sr": show_sr,
         "show_dz": show_dz,
         "analyze": analyze,
+        "api_key": api_key,
+        "api_secret": api_secret
     }
  
  
