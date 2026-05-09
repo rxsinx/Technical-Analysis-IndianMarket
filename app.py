@@ -1660,7 +1660,7 @@ def main():
             vol  = analyze_volume(df)
             chp  = detect_chart_patterns(df)
             mtf_dfs = fetch_multi_tf_kite(cfg["symbol"], cfg["period"])
-            mtf  = multi_timeframe_analysis(cfg["symbol"], cfg["5minute", "15minute"], preloaded_dfs=mtf_dfs if mtf_dfs else None)
+            mtf  = multi_timeframe_analysis(cfg["symbol"], ["5minute", "15minute"], preloaded_dfs=mtf_dfs if mtf_dfs else None)
             tp   = generate_trade_plan(df, ms, sr, tr)
             rm   = calculate_risk(df, tp, cfg["capital"], cfg["risk_pct"])
  
@@ -1749,5 +1749,3 @@ def main():
  
 if __name__ == "__main__":
     main()
- 
-
