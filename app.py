@@ -334,7 +334,7 @@ def render_header():
           <span style="font-size:10px;background:{color};color:#fff;
           padding:2px 8px;border-radius:3px;margin-left:10px;">● {src}</span>
         </div>
-        <div class="module-sub">TECHNICAL ANALYSIS SYSTEM v3.0 &nbsp;|&nbsp;
+        <div class="module-sub">TECHNICAL ANALYSIS SYSTEM &nbsp;|&nbsp;
         KITE OHLCV + YFINANCE FUNDAMENTALS &nbsp;|&nbsp; 16 MODULES</div>
         """, unsafe_allow_html=True)
     with col2:
