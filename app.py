@@ -1,5 +1,4 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -7,6 +6,13 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 from datetime import datetime, timedelta
 import warnings
+from kite_data import (
+    fetch_ohlcv_kite,
+    fetch_combined_info,
+    fetch_multi_tf_kite,
+    is_kite_connected,
+    get_data_source_label,
+)
 warnings.filterwarnings('ignore')
 
 from modules.market_structure import analyze_market_structure
@@ -321,9 +327,15 @@ td { color: #24292f !important; border-bottom: 1px solid #eaecef !important;
 def render_header():
     col1, col2, col3 = st.columns([3, 1, 1])
     with col1:
-        st.markdown("""
-        <div class="module-header">TECHNICAL ANALYSIS TERMINAL</div>
-        <div class="module-sub">INDIAN EQUITY &nbsp;|&nbsp; 16 MODULES LOADED</div>
+        src   = get_data_source_label()
+        color = "#1a7f37" if src == "KITE LIVE" else "#9a6700"
+        st.markdown(f"""
+        <div class="module-header"> TERMINAL
+          <span style="font-size:10px;background:{color};color:#fff;
+          padding:2px 8px;border-radius:3px;margin-left:10px;">● {src}</span>
+        </div>
+        <div class="module-sub">TECHNICAL ANALYSIS SYSTEM v3.0 &nbsp;|&nbsp;
+        KITE OHLCV + YFINANCE FUNDAMENTALS &nbsp;|&nbsp; 16 MODULES</div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown(f"""
@@ -352,8 +364,18 @@ def render_sidebar():
     """, unsafe_allow_html=True)
  
     # Symbol input
-    st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;'>SYMBOL</div>", unsafe_allow_html=True)
-    symbol = st.sidebar.text_input("", value="RELIANCE.NS", key="symbol_input", label_visibility="collapsed").upper().strip()
+    symbol = st.sidebar.text_input("", value="RELIANCE", key="symbol_input",label_visibility="collapsed").upper().strip()
+    
+    if is_kite_connected():
+        st.sidebar.markdown("""<div style="background:#dafbe1;border:1px solid
+        #1a7f37;border-radius:4px;padding:5px 10px;font-size:10px;color:#1a7f37;
+        margin-top:4px;">✓ Kite API — Live Data Active</div>""",
+        unsafe_allow_html=True)
+    else:
+        st.sidebar.markdown("""<div style="background:#fff8c5;border:1px solid
+        #9a6700;border-radius:4px;padding:5px 10px;font-size:10px;color:#9a6700;
+        margin-top:4px;">⚠ Kite not connected — using yfinance</div>""",
+        unsafe_allow_html=True)
  
     # Timeframe
     st.sidebar.markdown("<div style='font-size:10px;color:#3a6648;letter-spacing:2px;margin-top:12px;'>PRIMARY TIMEFRAME</div>", unsafe_allow_html=True)
@@ -402,26 +424,14 @@ def render_sidebar():
  
  
 # ── DATA FETCH ────────────────────────────────────────────────────────────────
-TF_MAP = {"Daily": "1d", "Weekly": "1wk", "Monthly": "1mo", "4H": "1h", "1H": "1h"}
  
 @st.cache_data(ttl=300)
-def fetch_data(symbol: str, interval: str, period: str) -> pd.DataFrame:
-    ticker = yf.Ticker(symbol)
-    df = ticker.history(period=period, interval=interval, auto_adjust=True)
-    if df.empty:
-        return pd.DataFrame()
-    df.index = pd.to_datetime(df.index)
-    df = df[["Open", "High", "Low", "Close", "Volume"]].dropna()
-    return df
+def fetch_data(symbol: str, timeframe: str, period: str) -> pd.DataFrame:
+    return fetch_ohlcv_kite(symbol, timeframe=timeframe, period=period)
  
 @st.cache_data(ttl=300)
 def fetch_info(symbol: str) -> dict:
-    try:
-        t = yf.Ticker(symbol)
-        info = t.info
-        return info
-    except:
-        return {}
+    return fetch_combined_info(symbol)
  
  
 # ── MAIN CHART ────────────────────────────────────────────────────────────────
@@ -1604,7 +1614,6 @@ def main():
     # Auto-load on first run
     if st.session_state.df is None or cfg["analyze"]:
         with st.spinner("LOADING DATA..."):
-            interval = TF_MAP.get(cfg["timeframe"], "1d")
             df = fetch_data(cfg["symbol"], interval, cfg["period"])
             info = fetch_info(cfg["symbol"])
  
@@ -1622,7 +1631,8 @@ def main():
             bk   = detect_breakouts(df, sr)
             vol  = analyze_volume(df)
             chp  = detect_chart_patterns(df)
-            mtf  = multi_timeframe_analysis(cfg["symbol"], cfg["period"])
+            mtf_dfs = fetch_multi_tf_kite(cfg["symbol"], cfg["period"])
+            mtf  = multi_timeframe_analysis(cfg["symbol"], cfg["period"], preloaded_dfs=mtf_dfs if mtf_dfs else None)
             tp   = generate_trade_plan(df, ms, sr, tr)
             rm   = calculate_risk(df, tp, cfg["capital"], cfg["risk_pct"])
  
