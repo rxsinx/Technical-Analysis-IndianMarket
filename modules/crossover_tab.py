@@ -550,8 +550,8 @@ def render_crossover_tab(df: pd.DataFrame, symbol: str = "") -> None:
         c1, c2, c3, c4 = st.columns(4)
         with c1:
             use_rsi = st.checkbox("RSI(14) filter", value=True)
-            rsi_lo  = st.slider("RSI lower", 30, 55, 45, 5)
-            rsi_hi  = st.slider("RSI upper", 55, 80, 65, 5)
+            rsi_lo  = st.slider("RSI lower", 30, 30, 30, 0)
+            rsi_hi  = st.slider("RSI upper", 75, 75, 75, 0)
         with c2:
             use_macd = st.checkbox("MACD histogram filter", value=True)
         with c3:
