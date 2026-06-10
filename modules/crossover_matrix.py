@@ -86,8 +86,8 @@ def _backtest_pair(
     use_macd:    bool  = True,
     use_atr:     bool  = True,
     use_volume:  bool  = True,
-    rsi_lo:      float = 45.0,
-    rsi_hi:      float = 65.0,
+    rsi_lo:      float = 30,
+    rsi_hi:      float = 75,
     atr_max_pct: float = 4.0,
     vol_min:     float = 1.0,
 ) -> dict:
